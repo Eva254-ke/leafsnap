@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "834121133893",
+    "project_id": "leafsnap-5eb2c",
+    "storage_bucket": "leafsnap-5eb2c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:834121133893:android:24221b452820797e5b182c",
+        "android_client_info": {
+          "package_name": "com.leafsnap.ai"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "834121133893-9rk3v7e2qs1np24dlft14rvo1rkrn9g5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.leafsnap.ai",
+            "certificate_hash": "f17932bbc7d1930cac8d214e08fa33cccf601e23"
+          }
+        },
+        {
+          "client_id": "834121133893-rgpd5c7cv4htn5io7q4k6siltg15fo1r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4W7n_mqKKJo8LcqQRzgUEiULO9Mkvd8Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "834121133893-rgpd5c7cv4htn5io7q4k6siltg15fo1r.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "834121133893-n3cm8por7md52e8prn5o5pflsnq07hjo.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.leafsnapAi"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
