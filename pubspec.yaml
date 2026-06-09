@@ -2,7 +2,7 @@ name: leafsnap_ai
 description: "Identify plants, diagnose issues, and get personalized care tips — all offline-first."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+3
 
 environment:
   sdk: ^3.10.7
@@ -25,9 +25,10 @@ dependencies:
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.1
 
-  # Media & Camera
+  # Media, Camera & Audio
   image_picker: ^1.1.2
   camera: ^0.11.0+2
+  flutter_tts: ^4.0.2  # Required for in-app pronunciation
 
   # Location Services
   geolocator: ^12.0.0
@@ -38,13 +39,15 @@ dependencies:
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.4
   firebase_storage: ^12.3.2
+  firebase_remote_config: ^5.0.0
   google_sign_in: ^6.1.4
 
   # Utilities
   url_launcher: ^6.2.1          # Open URLs, email, app stores
   package_info_plus: ^4.1.0     # App version/build info
   permission_handler: ^11.0.1   # Runtime permission requests
-  share_plus: ^7.2.1            # Native share sheet (fallback: clipboard)
+  share_plus: ^7.2.1            # Native share sheet
+  in_app_purchase: ^3.2.0       # Play Billing / StoreKit
 
   # Cupertino icons for iOS-style icons
   cupertino_icons: ^1.0.8
@@ -63,10 +66,7 @@ flutter:
     - assets/animations/
     - assets/animations/realistic_leaf_scan.json
     - assets/icons/
-    # Add local images here if needed:
-    # - assets/images/
 
-  # Example: custom fonts (uncomment and add font files if needed)
   # fonts:
   #   - family: Inter
   #     fonts:

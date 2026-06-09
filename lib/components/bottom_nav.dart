@@ -7,6 +7,7 @@ import '../screens/onboarding/home/home_screen.dart';
 import '../screens/more/more_screen.dart';
 import '../screens/my_plants/my_plants_screen.dart';
 import '../services/posthog_service.dart';
+import '../services/remote_config_service.dart';
 
 class AppBottomNav extends StatefulWidget {
   const AppBottomNav({Key? key}) : super(key: key);
@@ -33,6 +34,21 @@ class _AppBottomNavState extends State<AppBottomNav> {
       ];
 
   void _onItemTapped(int index) {
+    final rc = RemoteConfigService.instance;
+    final diagnoseEnabled =
+        rc.getBool(RemoteConfigKeys.featureDiagnoseEnabled);
+    final cameraEnabled =
+        rc.getBool(RemoteConfigKeys.featureCameraEnabled);
+
+    if (index == 1 && !diagnoseEnabled) {
+      _showFeatureDisabled('Diagnose is coming soon.');
+      return;
+    }
+    if (index == 2 && !cameraEnabled) {
+      _showFeatureDisabled('Camera is coming soon.');
+      return;
+    }
+
     if (index == 2) {
       Navigator.push(
         context,
@@ -58,6 +74,12 @@ class _AppBottomNavState extends State<AppBottomNav> {
 
   @override
   Widget build(BuildContext context) {
+    final rc = RemoteConfigService.instance;
+    final diagnoseEnabled =
+        rc.getBool(RemoteConfigKeys.featureDiagnoseEnabled);
+    final cameraEnabled =
+        rc.getBool(RemoteConfigKeys.featureCameraEnabled);
+
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
@@ -76,7 +98,8 @@ class _AppBottomNavState extends State<AppBottomNav> {
         child: FloatingActionButton(
           heroTag: 'main_camera_fab',
           onPressed: () => _onItemTapped(2),
-          backgroundColor: const Color(0xFF22A45D),
+          backgroundColor:
+              cameraEnabled ? const Color(0xFF22A45D) : Colors.grey.shade400,
           elevation: 0,
           shape: const CircleBorder(),
           child: const Icon(Icons.camera_alt_rounded, size: 30, color: Colors.white),
@@ -103,6 +126,7 @@ class _AppBottomNavState extends State<AppBottomNav> {
                 icon: Icons.add_box_outlined,
                 label: 'Diagnose',
                 index: 1,
+                enabled: diagnoseEnabled,
               ),
               const SizedBox(width: 40),
               _navItem(
@@ -126,12 +150,15 @@ class _AppBottomNavState extends State<AppBottomNav> {
     required IconData icon,
     required String label,
     required int index,
+    bool enabled = true,
   }) {
     final isSelected = _selectedIndex == index;
-    final color = isSelected ? const Color(0xFF22A45D) : Colors.grey;
+    final color = enabled
+        ? (isSelected ? const Color(0xFF22A45D) : Colors.grey)
+        : Colors.grey.shade400;
 
     return InkWell(
-      onTap: () => _onItemTapped(index),
+      onTap: enabled ? () => _onItemTapped(index) : null,
       borderRadius: BorderRadius.circular(18),
       child: SizedBox(
         width: 72,
@@ -153,6 +180,12 @@ class _AppBottomNavState extends State<AppBottomNav> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showFeatureDisabled(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 }

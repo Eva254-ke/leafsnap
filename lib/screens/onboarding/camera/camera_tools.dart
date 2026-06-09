@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-enum PlantNetSupportLevel { direct, assisted, limited, unsupported }
-
 enum CameraToolId {
   plantFinder,
   waterCalc,
@@ -24,13 +22,13 @@ class CameraToolDefinition {
     required this.subtitle,
     required this.icon,
     required this.accentColor,
-    required this.supportLevel,
     required this.cameraTitle,
     required this.cameraHint,
     required this.helpText,
     required this.plantNetNote,
     required this.analysisSteps,
     this.isRunnable = true,
+    this.requiresPremium = false,
   });
 
   final CameraToolId id;
@@ -38,64 +36,24 @@ class CameraToolDefinition {
   final String subtitle;
   final IconData icon;
   final Color accentColor;
-  final PlantNetSupportLevel supportLevel;
   final String cameraTitle;
   final String cameraHint;
   final String helpText;
   final String plantNetNote;
   final List<String> analysisSteps;
   final bool isRunnable;
+  final bool requiresPremium;
 
-  String get supportBadgeLabel {
-    switch (supportLevel) {
-      case PlantNetSupportLevel.direct:
-        return 'Full support';
-      case PlantNetSupportLevel.assisted:
-        return 'Assisted';
-      case PlantNetSupportLevel.limited:
-        return 'Limited';
-      case PlantNetSupportLevel.unsupported:
-        return 'Unavailable';
-    }
+  String get accessBadgeLabel {
+    return requiresPremium ? 'Premium' : 'Free';
   }
 
-  String get supportTitle {
-    switch (supportLevel) {
-      case PlantNetSupportLevel.direct:
-        return 'This tool is fully supported.';
-      case PlantNetSupportLevel.assisted:
-        return 'This tool is assisted by reference data.';
-      case PlantNetSupportLevel.limited:
-        return 'This tool is partially supported.';
-      case PlantNetSupportLevel.unsupported:
-        return 'This tool is not supported yet.';
-    }
+  Color get accessColor {
+    return requiresPremium ? const Color(0xFF8E44AD) : const Color(0xFF1E7A46);
   }
 
-  Color get supportColor {
-    switch (supportLevel) {
-      case PlantNetSupportLevel.direct:
-        return const Color(0xFF1E7A46);
-      case PlantNetSupportLevel.assisted:
-        return const Color(0xFF2E86C1);
-      case PlantNetSupportLevel.limited:
-        return const Color(0xFFF39C12);
-      case PlantNetSupportLevel.unsupported:
-        return const Color(0xFF8E44AD);
-    }
-  }
-
-  Color get supportTint {
-    switch (supportLevel) {
-      case PlantNetSupportLevel.direct:
-        return const Color(0xFFE7F6ED);
-      case PlantNetSupportLevel.assisted:
-        return const Color(0xFFE9F4FB);
-      case PlantNetSupportLevel.limited:
-        return const Color(0xFFFFF4E5);
-      case PlantNetSupportLevel.unsupported:
-        return const Color(0xFFF3EBFA);
-    }
+  Color get accessTint {
+    return requiresPremium ? const Color(0xFFF3EBFA) : const Color(0xFFE7F6ED);
   }
 
   String get unavailableMessage {
@@ -106,16 +64,15 @@ class CameraToolDefinition {
 const List<CameraToolDefinition> quickToolDefinitions = <CameraToolDefinition>[
   CameraToolDefinition(
     id: CameraToolId.plantFinder,
-    icon: Icons.eco_rounded,
+    icon: Icons.center_focus_strong_rounded,
     title: 'Plant Finder',
     subtitle: 'Identify any plant',
     accentColor: Color(0xFF1E7A46),
-    supportLevel: PlantNetSupportLevel.direct,
     cameraTitle: 'Scan the plant',
     cameraHint: 'Center the clearest leaf, flower, fruit, or bark detail.',
     helpText:
         'This works best when the plant fills the frame and the photo is sharp.',
-    plantNetNote: 'Species identification plus reference care data.',
+    plantNetNote: 'We analyze the photo and prepare your results.',
     analysisSteps: <String>[
       'Detecting plant features',
       'Matching species',
@@ -128,13 +85,10 @@ const List<CameraToolDefinition> quickToolDefinitions = <CameraToolDefinition>[
     title: 'Water Calc',
     subtitle: 'Perfect watering',
     accentColor: Color(0xFF2E86C1),
-    supportLevel: PlantNetSupportLevel.assisted,
     cameraTitle: 'Scan for watering guidance',
-    cameraHint: 'We first identify the plant, then pull its watering notes.',
-    helpText:
-        'We identify the plant first, then pull its watering notes from the care dataset.',
-    plantNetNote:
-        'We identify the species, then use watering guidance from our care dataset.',
+    cameraHint: 'We analyze the photo and surface watering guidance.',
+    helpText: 'We analyze the photo and surface watering guidance.',
+    plantNetNote: 'Watering guidance is based on the photo analysis.',
     analysisSteps: <String>[
       'Identifying the plant',
       'Loading watering notes',
@@ -144,22 +98,21 @@ const List<CameraToolDefinition> quickToolDefinitions = <CameraToolDefinition>[
   CameraToolDefinition(
     id: CameraToolId.repotChecker,
     icon: Icons.build_rounded,
-    title: 'Repot Checker',
-    subtitle: 'When to repot',
+    title: 'Report Checker',
+    subtitle: 'Premium report review',
     accentColor: Color(0xFFF39C12),
-    supportLevel: PlantNetSupportLevel.limited,
-    cameraTitle: 'Scan before repot advice',
+    cameraTitle: 'Scan before report review',
     cameraHint:
-        'We can identify the plant now, but a real repot check needs pot and root context too.',
+      'Premium review uses a full plant scan plus care context.',
     helpText:
-        'Repot timing also depends on root crowding, pot size, season, and growth rate.',
-    plantNetNote:
-        'Species ID is part of the flow, but repot advice needs additional context.',
+        'Premium report review helps interpret the scan with extra care context.',
+    plantNetNote: 'Report review uses the strongest details available from the scan.',
     analysisSteps: <String>[
       'Identifying the plant',
       'Loading care context',
       'Preparing results',
     ],
+    requiresPremium: true,
   ),
   CameraToolDefinition(
     id: CameraToolId.plantAdvisor,
@@ -167,13 +120,10 @@ const List<CameraToolDefinition> quickToolDefinitions = <CameraToolDefinition>[
     title: 'Plant Advisor',
     subtitle: 'Care tips',
     accentColor: Color(0xFF8E44AD),
-    supportLevel: PlantNetSupportLevel.assisted,
     cameraTitle: 'Scan for care advice',
-    cameraHint:
-        'We identify the plant first, then surface the best care notes we have.',
-    helpText: 'Care suggestions come from our reference care dataset.',
-    plantNetNote:
-        'We identify the species, then surface sunlight and watering guidance.',
+    cameraHint: 'We analyze the photo and surface care tips.',
+    helpText: 'Care tips are generated from the photo analysis.',
+    plantNetNote: 'Care tips are based on what we see in the photo.',
     analysisSteps: <String>[
       'Identifying the plant',
       'Loading care notes',
@@ -190,19 +140,16 @@ smartIdToolDefinitions = <CameraToolDefinition>[
     title: 'Weed ID',
     subtitle: 'Control & prevent',
     accentColor: Color(0xFF22A45D),
-    supportLevel: PlantNetSupportLevel.limited,
     cameraTitle: 'Scan the weed',
-    cameraHint:
-        'Get the likely plant species first, then decide if it is unwanted in your region.',
-    helpText:
-        'We can identify the plant, but whether it counts as a weed depends on local context.',
-    plantNetNote:
-        'We identify the species, but weed status and control guidance need further context.',
+    cameraHint: 'Check the photo, then decide if it is unwanted in your region.',
+    helpText: 'We can scan the photo, but weed status depends on local context.',
+    plantNetNote: 'Weed guidance needs local context beyond the photo.',
     analysisSteps: <String>[
       'Detecting plant features',
       'Matching species',
       'Preparing results',
     ],
+    requiresPremium: true,
   ),
   CameraToolDefinition(
     id: CameraToolId.allergenId,
@@ -210,19 +157,16 @@ smartIdToolDefinitions = <CameraToolDefinition>[
     title: 'Allergen ID',
     subtitle: 'Identify & watch out',
     accentColor: Color(0xFFF4B400),
-    supportLevel: PlantNetSupportLevel.limited,
     cameraTitle: 'Scan the plant',
-    cameraHint:
-        'We can identify the species, but allergen risk needs another dataset.',
-    helpText:
-        'Allergen risk requires a separate dataset beyond the plant species.',
-    plantNetNote:
-        'Plant species is identified, but allergen screening is separate.',
+    cameraHint: 'We can scan the photo, but allergen risk needs more context.',
+    helpText: 'Allergen risk needs more context than a single photo.',
+    plantNetNote: 'Allergen screening is separate from the photo match.',
     analysisSteps: <String>[
       'Detecting plant features',
       'Matching species',
       'Preparing results',
     ],
+    requiresPremium: true,
   ),
   CameraToolDefinition(
     id: CameraToolId.toxicId,
@@ -230,19 +174,16 @@ smartIdToolDefinitions = <CameraToolDefinition>[
     title: 'Toxic ID',
     subtitle: 'Spot & stay safe',
     accentColor: Color(0xFFF06292),
-    supportLevel: PlantNetSupportLevel.limited,
     cameraTitle: 'Scan the plant',
-    cameraHint:
-        'We can identify the species, but toxicity checks need safety metadata.',
-    helpText:
-        'Toxicity guidance requires a separate safety dataset and careful review.',
-    plantNetNote:
-        'The species is identified, but toxicity classification requires additional safety metadata.',
+    cameraHint: 'We can scan the photo, but toxicity checks need more context.',
+    helpText: 'Toxicity guidance needs more context and careful review.',
+    plantNetNote: 'Toxicity checks are separate from the photo match.',
     analysisSteps: <String>[
       'Detecting plant features',
       'Matching species',
       'Preparing results',
     ],
+    requiresPremium: true,
   ),
   CameraToolDefinition(
     id: CameraToolId.treeId,
@@ -250,7 +191,6 @@ smartIdToolDefinitions = <CameraToolDefinition>[
     title: 'Tree ID',
     subtitle: 'Recognize & explore',
     accentColor: Color(0xFF22A45D),
-    supportLevel: PlantNetSupportLevel.direct,
     cameraTitle: 'Scan the tree',
     cameraHint: 'Leaves are ideal, but bark and fruit can help too.',
     helpText:
@@ -261,6 +201,7 @@ smartIdToolDefinitions = <CameraToolDefinition>[
       'Matching species',
       'Preparing results',
     ],
+    requiresPremium: true,
   ),
   CameraToolDefinition(
     id: CameraToolId.treeRingId,
@@ -268,12 +209,10 @@ smartIdToolDefinitions = <CameraToolDefinition>[
     title: 'Tree-ring ID',
     subtitle: 'Analyze growth',
     accentColor: Color(0xFFB08968),
-    supportLevel: PlantNetSupportLevel.unsupported,
     cameraTitle: 'Tree-ring analysis is not available',
     cameraHint:
         'Trunk cross-sections and growth-ring analysis are not supported here.',
-    helpText:
-        'Tree-ring analysis is a different computer-vision problem from plant identification.',
+    helpText: 'Tree-ring analysis is a different computer-vision problem.',
     plantNetNote: 'Tree-ring analysis is outside the current tool scope.',
     analysisSteps: <String>[
       'Reviewing tool support',
@@ -281,6 +220,7 @@ smartIdToolDefinitions = <CameraToolDefinition>[
       'Preparing guidance',
     ],
     isRunnable: false,
+    requiresPremium: true,
   ),
   CameraToolDefinition(
     id: CameraToolId.identify360,
@@ -288,19 +228,18 @@ smartIdToolDefinitions = <CameraToolDefinition>[
     title: '360 ID',
     subtitle: 'Full-circle identify',
     accentColor: Color(0xFF26A69A),
-    supportLevel: PlantNetSupportLevel.limited,
     cameraTitle: 'Start a multi-angle scan',
     cameraHint:
         'Multi-angle matching is useful, but this camera flow captures one photo at a time.',
     helpText:
         'This screen is wired for the tool now, but the capture UX is still single-photo.',
-    plantNetNote:
-        'Multi-image matching is not fully supported in the current capture flow.',
+    plantNetNote: 'Multi-image matching is not supported in the current capture flow.',
     analysisSteps: <String>[
       'Reviewing the photo',
       'Matching species',
       'Preparing results',
     ],
+    requiresPremium: true,
   ),
   CameraToolDefinition(
     id: CameraToolId.birdId,
@@ -308,20 +247,17 @@ smartIdToolDefinitions = <CameraToolDefinition>[
     title: 'Bird ID',
     subtitle: 'Observe & learn',
     accentColor: Color(0xFFFF8A65),
-    supportLevel: PlantNetSupportLevel.unsupported,
     cameraTitle: 'Bird ID is not available',
-    cameraHint:
-        'This app is focused on plant and plant-health identification rather than birds.',
-    helpText:
-        'Bird identification is outside the scope of this plant-focused workflow.',
-    plantNetNote:
-        'Bird classification is not supported by this plant-focused workflow.',
+    cameraHint: 'This app is focused on plant identification rather than birds.',
+    helpText: 'Bird identification is outside the scope of this workflow.',
+    plantNetNote: 'Bird classification is not supported in this workflow.',
     analysisSteps: <String>[
       'Reviewing tool support',
       'Checking available scan modes',
       'Preparing guidance',
     ],
     isRunnable: false,
+    requiresPremium: true,
   ),
   CameraToolDefinition(
     id: CameraToolId.insectId,
@@ -329,7 +265,6 @@ smartIdToolDefinitions = <CameraToolDefinition>[
     title: 'Insect ID',
     subtitle: 'Discover & classify',
     accentColor: Color(0xFF5C6BC0),
-    supportLevel: PlantNetSupportLevel.limited,
     cameraTitle: 'Scan the pest or damage',
     cameraHint:
         'This works best for pests on a plant or visible plant damage, not general insect taxonomy.',
@@ -341,6 +276,7 @@ smartIdToolDefinitions = <CameraToolDefinition>[
       'Checking pest clues',
       'Preparing results',
     ],
+    requiresPremium: true,
   ),
 ];
 

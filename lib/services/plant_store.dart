@@ -44,6 +44,7 @@ class PlantStore {
     List<String>? commonNames,
     File? imageFile,
     String? referenceImageUrl,
+    String? healthStatus,
   }) async {
     final userId = await _ensureUserId();
     final imageUrl =
@@ -62,6 +63,7 @@ class PlantStore {
       'imageUrl': imageUrl,
       'localImagePath': imageFile?.path,
       'referenceImageUrl': referenceImageUrl,
+      'healthStatus': healthStatus ?? 'unknown',
       'createdAt': FieldValue.serverTimestamp(),
       'lastScannedAt': FieldValue.serverTimestamp(),
     });

@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return isSignedIn() &&
+        resource.data.userId == request.auth.uid;
+    }
+
+    function isIncomingOwner() {
+      return isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    match /diagnosis_history/{docId} {
+      allow create: if isIncomingOwner();
+      allow get, list: if isOwner();
+      allow update: if isOwner() &&
+        isIncomingOwner() &&
+        request.resource.data.userId == resource.data.userId;
+      allow delete: if isOwner();
+    }
+
+    match /my_plants/{docId} {
+      allow create: if isIncomingOwner();
+      allow get, list: if isOwner();
+      allow update: if isOwner() &&
+        isIncomingOwner() &&
+        request.resource.data.userId == resource.data.userId;
+      allow delete: if isOwner();
+    }
+
+    match /wishlist/{docId} {
+      allow create: if isIncomingOwner();
+      allow get, list: if isOwner();
+      allow update: if isOwner() &&
+        isIncomingOwner() &&
+        request.resource.data.userId == resource.data.userId;
+      allow delete: if isOwner();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

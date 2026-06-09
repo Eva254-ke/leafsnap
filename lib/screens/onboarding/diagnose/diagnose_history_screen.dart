@@ -45,13 +45,40 @@ class _DiagnoseHistoryScreenState extends State<DiagnoseHistoryScreen> {
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 final error = snapshot.error;
-                if (error is FirebaseException &&
-                    error.code == 'permission-denied') {
-                  return const Center(
-                    child: Text('History could not load because Firestore access is denied.'),
+                if (error is FirebaseException) {
+                  if (error.code == 'permission-denied') {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'History access is currently unavailable. Please try again later.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    );
+                  }
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'Could not load history: ${error.message}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ),
                   );
                 }
-                return const Center(child: Text('Failed to load history.'));
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'Failed to load history. Please check your connection.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                );
               }
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
@@ -59,7 +86,16 @@ class _DiagnoseHistoryScreenState extends State<DiagnoseHistoryScreen> {
 
               final docs = snapshot.data!.docs;
               if (docs.isEmpty) {
-                return const Center(child: Text('No history yet.'));
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'No diagnosis history yet. Start diagnosing plants to see your history here.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                );
               }
 
               return ListView.builder(

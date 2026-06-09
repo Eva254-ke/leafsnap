@@ -8,6 +8,8 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../components/remote_config_ui.dart';
+import '../../../services/api_error.dart';
 import '../../../services/inaturalist_api.dart';
 import '../../../services/perenual_api.dart';
 import '../../../services/weather_service.dart';
@@ -47,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   bool _isLoadingCrops = false;
   String? _cropError;
+  bool _isApiLimitReached = false;
   List<PerenualSpeciesSummary> _spotlightCrops = [];
   List<PerenualSpeciesSummary> _cropLibrary = [];
 
@@ -57,18 +60,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   // Reliable fallback images for common plants (Unsplash - free to use)
   static const Map<String, String> _fallbackPlantImages = {
     'Tomato': 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&h=300&fit=crop',
-    'Banana': 'https://images.unsplash.com/photo-1571771096344-2a5e0c3c2f8e?w=400&h=300&fit=crop',
-    'Maize': 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=400&h=300&fit=crop',
-    'Corn': 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=400&h=300&fit=crop',
-    'Beans': 'https://images.unsplash.com/photo-1515543237350-b3eea1ec8082?w=400&h=300&fit=crop',
+    'Maize':
+        'https://www.grantthornton.in/globalassets/1.-member-firms/india/assets/pdf-images/554x544px/photograph/554x544px_website_photographs_641.jpg',
+    'Corn':
+        'https://www.grantthornton.in/globalassets/1.-member-firms/india/assets/pdf-images/554x544px/photograph/554x544px_website_photographs_641.jpg',
+    'Bean': 'https://www.thespruce.com/thmb/cSsyLW4TIiQg0o4rk0wNdXzWrMM=/3564x2477/filters:no_upscale():max_bytes(150000):strip_icc()/GettyImages-1820512381-5bec11bf46e0fb0026b2d89c.jpg',
+    'Beans': 'https://www.thespruce.com/thmb/cSsyLW4TIiQg0o4rk0wNdXzWrMM=/3564x2477/filters:no_upscale():max_bytes(150000):strip_icc()/GettyImages-1820512381-5bec11bf46e0fb0026b2d89c.jpg',
+    'Phaseolus vulgaris': 'https://www.thespruce.com/thmb/cSsyLW4TIiQg0o4rk0wNdXzWrMM=/3564x2477/filters:no_upscale():max_bytes(150000):strip_icc()/GettyImages-1820512381-5bec11bf46e0fb0026b2d89c.jpg',
     'Spinach': 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&h=300&fit=crop',
     'Kale': 'https://images.unsplash.com/photo-1582515073490-3993186489c6?w=400&h=300&fit=crop',
-    'Cabbage': 'https://images.unsplash.com/photo-1582515073490-3993186489c6?w=400&h=300&fit=crop',
-    'Onion': 'https://images.unsplash.com/photo-1518977676654-2e86c6b7c8f0?w=400&h=300&fit=crop',
+    'Cabbage':
+        'https://tse1.mm.bing.net/th/id/OIP.5ATExUzSl3XqRjWJn9KebQHaFq?w=570&h=436&rs=1&pid=ImgDetMain&o=7&rm=3',
+    'Onion': 'https://growhappierplants.com/wp-content/uploads/2023/05/green-onion-plants.jpg',
     'Pepper': 'https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=400&h=300&fit=crop',
     'Cucumber': 'https://images.unsplash.com/photo-1449300079323-02e209d9d3a6?w=400&h=300&fit=crop',
     'Lettuce': 'https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?w=400&h=300&fit=crop',
-    'Carrot': 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=400&h=300&fit=crop',
+    'Carrot': 'https://tse1.mm.bing.net/th/id/OIP.rvpW66Zu3XtCsAxOYQ5-4QHaE6?rs=1&pid=ImgDetMain&o=7&rm=3',
     'Potato': 'https://images.unsplash.com/photo-1518977676654-2e86c6b7c8f0?w=400&h=300&fit=crop',
     'Rice': 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=300&fit=crop',
     'Okra': 'https://images.unsplash.com/photo-1601648764658-ad37934f8c0e?w=400&h=300&fit=crop',
@@ -111,6 +118,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _country = '';
           _weather = null;
         });
+        // Still load cached crops and fetch fresh data for default location
+        await _loadCachedCrops(allowStale: true, town: _city);
+        _loadCropCollections();
         return;
       }
 
@@ -127,6 +137,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _country = '';
           _weather = null;
         });
+        // Still load cached crops and fetch fresh data for default location
+        await _loadCachedCrops(allowStale: true, town: _city);
+        _loadCropCollections();
         return;
       }
 
@@ -201,9 +214,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     setState(() {
       _isLoadingCrops = true;
       _cropError = null;
+      _isApiLimitReached = false;
     });
 
-    await _loadCachedCrops(allowStale: false, town: town);
+    await _loadCachedCrops(allowStale: true, town: town);
 
     try {
       final profile = _cropProfileForTown(town);
@@ -214,10 +228,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       setState(() {
         _spotlightCrops = spotlight;
         _cropLibrary = library;
+        _isApiLimitReached = false;
       });
       await _saveCachedCrops(town: town, spotlight: spotlight, library: library);
     } catch (error) {
       if (!mounted) return;
+      if (isRateLimitError(error)) {
+        setState(() {
+          _isApiLimitReached = true;
+        });
+        if (_spotlightCrops.isNotEmpty || _cropLibrary.isNotEmpty) {
+          // Keep cached data, don't set error
+          return;
+        }
+      }
       setState(() {
         _cropError = _describeCropError(error);
       });
@@ -346,6 +370,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
     if (error is HttpException) {
       return error.message;
+    }
+    if (isRateLimitError(error)) {
+      return 'Plant references are busy right now. Please try again later.';
     }
     return error.toString();
   }
@@ -756,23 +783,37 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return null;
   }
 
+  bool _prefersCuratedImage(String plantName) {
+    final normalizedName = _normalizePlantName(plantName);
+    return normalizedName.contains('bean') ||
+        normalizedName.contains('phaseolus') ||
+        normalizedName.contains('cabbage') ||
+        normalizedName.contains('onion') ||
+        normalizedName.contains('allium cepa');
+  }
+
   List<String> _imageCandidates(String? apiUrl, String plantName) {
     final candidates = <String>[];
+    final fallbackUrl = _fallbackImageUrlForPlant(plantName);
+
+    if (_prefersCuratedImage(plantName) && fallbackUrl != null) {
+      candidates.add(fallbackUrl);
+    }
 
     if (_hasUsableImageUrl(apiUrl)) {
       candidates.add(apiUrl!.trim());
     }
 
-    final fallbackUrl = _fallbackImageUrlForPlant(plantName);
-    if (fallbackUrl != null) {
+    if (!_prefersCuratedImage(plantName) && fallbackUrl != null) {
       candidates.add(fallbackUrl);
     }
 
-    candidates.add(
-      'https://images.unsplash.com/photo-1443890923422-7819ed4101c0?w=400&h=300&fit=crop',
-    );
-
     return candidates.toSet().toList();
+  }
+
+  String? _preferredImageUrl(String? apiUrl, String plantName) {
+    final candidates = _imageCandidates(apiUrl, plantName);
+    return candidates.isEmpty ? null : candidates.first;
   }
 
   int? _safeToInt(double? value) {
@@ -873,14 +914,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final town = _selectedTown.isNotEmpty ? _selectedTown : _locationLabel;
     final currentTemp =
-        _weather?.currentTempC != null ? '${_weather!.currentTempC!.round()}\u00B0' : '--';
+        _weather?.currentTempC != null ? '${_weather?.currentTempC.round()}\u00B0' : '--';
     final weatherCode = _weather?.weatherCode;
     final isDay = _weather?.isDay ?? true;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0FFF4),
+    return RemoteConfigBuilder(
+      screenId: RemoteConfigScreens.home,
+      fallbackBackgroundColor: const Color(0xFFF0FFF4),
+      fallbackPrimaryColor: const Color(0xFF228B22),
+      builder: (context, remoteConfig) {
+        return Scaffold(
+      backgroundColor: remoteConfig.backgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF0FFF4),
+        backgroundColor: remoteConfig.backgroundColor,
         foregroundColor: const Color(0xFF1B1B1B),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -967,6 +1012,57 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (remoteConfig.banner != null) ...[
+              RemoteScreenBanner(
+                banner: remoteConfig.banner!,
+                primaryColor: remoteConfig.primaryColor,
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (_isApiLimitReached) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8E1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFFE08A)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.cloud_off_outlined,
+                      color: Color(0xFF8A5A00),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Plant references are busy',
+                            style: GoogleFonts.spaceGrotesk(
+                              color: const Color(0xFF5D3D00),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Cached crops may still appear. Please try again later.',
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF7A5200),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             _buildPlantSearchSection(),
             const SizedBox(height: 24),
             _buildSectionHeader(title: 'Hot Right Now in $town'),
@@ -1028,6 +1124,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
         ),
       ),
+        );
+      },
     );
   }
 
@@ -1070,6 +1168,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ],
     );
   }
+
 
   Widget _buildSectionHeader({required String title}) {
     return Text(
@@ -1140,7 +1239,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             child: _buildSmallCard(
               title: crop.commonName,
               imageUrl: crop.imageUrl ?? crop.thumbnailUrl,
-              onTap: () => _navigateToPlantDetails(crop.commonName),
+              onTap: () => _navigateToPlantDetails(
+                crop.commonName,
+                imageUrl: _preferredImageUrl(
+                  crop.imageUrl ?? crop.thumbnailUrl,
+                  crop.commonName,
+                ),
+              ),
             ),
           );
         },
@@ -1218,7 +1323,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         return _buildLargeCard(
           title: crop.commonName,
           imageUrl: crop.imageUrl ?? crop.thumbnailUrl,
-          onTap: () => _navigateToPlantDetails(crop.commonName),
+          onTap: () => _navigateToPlantDetails(
+            crop.commonName,
+            imageUrl: _preferredImageUrl(
+              crop.imageUrl ?? crop.thumbnailUrl,
+              crop.commonName,
+            ),
+          ),
         );
       },
     );
@@ -1299,12 +1410,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  void _navigateToPlantDetails(String plantName) {
+  void _navigateToPlantDetails(String plantName, {String? imageUrl}) {
     Navigator.push(
       context,
       MaterialPageRoute(
         settings: const RouteSettings(name: 'Plant Detail'),
-        builder: (context) => PlantDetailScreen(plantName: plantName),
+        builder: (context) => PlantDetailScreen(
+          plantName: plantName,
+          imageUrl: imageUrl,
+        ),
       ),
     );
   }

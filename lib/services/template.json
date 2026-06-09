@@ -1,0 +1,30 @@
+{
+  "maintenance_mode": false,
+  "maintenance_message": "We are updating LeafSnap AI. Please check back shortly.",
+  "force_update_min_build": 1,
+  "force_update_url": "https://play.google.com/store/apps/details?id=com.example.leafsnap_ai",
+
+  "app_banner_enabled": false,
+  "app_banner_message": "New plant tools are available.",
+  "app_banner_tone": "info",
+
+  "home_banner_enabled": true,
+  "home_banner_message": "Scan leaves in natural light for best results.",
+
+  "feature_camera_enabled": true,
+  "feature_diagnose_enabled": true,
+
+  "privacy_policy_url": "https://leafsnap.app/privacy",
+  "terms_of_use_url": "https://leafsnap.app/terms",
+  "help_url": "https://leafsnap.app/help",
+  "support_email": "support@leafsnap.app",
+  "support_subject": "LeafSnap Support Request",
+  "support_body": "Describe your issue here:\n\n",
+  "ios_store_url": "https://apps.apple.com/app/leafsnap/id123456789",
+  "android_store_url": "https://play.google.com/store/apps/details?id=com.example.leafsnap_ai",
+  "share_url": "https://play.google.com/store/apps/details?id=com.example.leafsnap_ai",
+
+  "screen_banners": "{\"settings\":{\"enabled\":true,\"message\":\"Need help? Contact support from this screen.\",\"tone\":\"info\"},\"home\":{\"enabled\":true,\"message\":\"Scan leaves in natural light for best results.\",\"tone\":\"success\"},\"diagnose\":{\"enabled\":true,\"message\":\"Diagnosis tips are being updated this week.\",\"tone\":\"warning\"},\"my_plants\":{\"enabled\":false,\"message\":\"\",\"tone\":\"info\"},\"more\":{\"enabled\":false,\"message\":\"\",\"tone\":\"info\"},\"plant_result\":{\"enabled\":true,\"message\":\"Review similar matches before saving.\",\"tone\":\"info\"}}",
+
+  "screen_theme_colors": "{\"settings\":{\"background\":\"#F4F6F7\",\"primary\":\"#2E7D32\"},\"home\":{\"background\":\"#F0FFF4\",\"primary\":\"#228B22\"},\"diagnose\":{\"background\":\"#F4FBF5\",\"primary\":\"#1D7A43\"},\"my_plants\":{\"background\":\"#F0FFF4\",\"primary\":\"#228B22\"},\"more\":{\"background\":\"#F4FBF6\",\"primary\":\"#22A45D\"},\"plant_result\":{\"background\":\"#F0FFF4\",\"primary\":\"#228B22\"}}"
+}

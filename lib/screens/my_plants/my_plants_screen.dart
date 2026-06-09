@@ -9,12 +9,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../components/app_header.dart';
+import '../../components/remote_config_ui.dart';
 import '../../models/garden_plant.dart';
 import '../../services/auth_service.dart';
 import '../../services/perenual_api.dart';
 import '../../plant/plant_detail_screen.dart';
 import '../onboarding/camera/camera_screen.dart';
 import '../onboarding/search/search_screen.dart';
+import '../reminders/reminders_screen.dart';
+import '../wishlist/wishlist_screen.dart';
 
 class MyPlantsScreen extends StatefulWidget {
   const MyPlantsScreen({super.key});
@@ -663,8 +666,13 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0FFF4),
+    return RemoteConfigBuilder(
+      screenId: RemoteConfigScreens.myPlants,
+      fallbackBackgroundColor: const Color(0xFFF0FFF4),
+      fallbackPrimaryColor: const Color(0xFF228B22),
+      builder: (context, remoteConfig) {
+        return Scaffold(
+      backgroundColor: remoteConfig.backgroundColor,
       appBar: AppHeader(
         title: 'My Garden',
         leftActions: [
@@ -682,21 +690,23 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> with SingleTickerProvid
           IconButton(
             icon: const Icon(Icons.notifications_outlined, color: Color(0xFF228B22)),
             onPressed: () {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Reminders coming soon')),
-                );
-              }
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  settings: const RouteSettings(name: 'Reminders'),
+                  builder: (_) => const RemindersScreen(),
+                ),
+              );
             },
           ),
           IconButton(
             icon: const Icon(Icons.favorite_border, color: Color(0xFF228B22)),
             onPressed: () {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Wishlist coming soon')),
-                );
-              }
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  settings: const RouteSettings(name: 'Wishlist'),
+                  builder: (_) => const WishlistScreen(),
+                ),
+              );
             },
           ),
         ],
@@ -707,6 +717,14 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> with SingleTickerProvid
           bottom: true,
           child: Column(
             children: [
+              if (remoteConfig.banner != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: RemoteScreenBanner(
+                    banner: remoteConfig.banner!,
+                    primaryColor: remoteConfig.primaryColor,
+                  ),
+                ),
               // Inline search bar when active
               if (_isSearching)
                 Container(
@@ -815,6 +833,8 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> with SingleTickerProvid
           ),
         ),
       ),
+        );
+      },
     );
   }
 
@@ -939,11 +959,14 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> with SingleTickerProvid
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E8),
+        color: const Color(0xFFE9F6EA),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: CustomPaint(
-        painter: _LeafBadgePainter(),
+      child: Center(
+        child: CustomPaint(
+          size: const Size(34, 34),
+          painter: _LeafBadgePainter(),
+        ),
       ),
     );
   }

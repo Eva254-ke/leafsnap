@@ -1,3 +1,5 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
 class PosthogService {
@@ -6,12 +8,22 @@ class PosthogService {
   static final PosthogService instance = PosthogService._();
 
   Future<void> init() async {
-    final config = PostHogConfig('phc_CjcZEL9LjsH5QzgKYJgFNjvBcWshdYC8jft7GoV7AdVh')
-      ..host = 'https://us.i.posthog.com'
+    final apiKey = dotenv.env['POSTHOG_API_KEY'];
+    final host = dotenv.env['POSTHOG_HOST'] ?? 'https://us.posthog.com';
+    
+    if (apiKey == null || apiKey.isEmpty) {
+      print('⚠️ PostHog API key not found in .env');
+      return;
+    }
+
+    final config = PostHogConfig(apiKey)
+      ..host = host
       ..captureApplicationLifecycleEvents = true
-      ..debug = true;
+      ..sessionReplay = kReleaseMode
+      ..debug = kDebugMode;
 
     await Posthog().setup(config);
+    print('✅ PostHog initialized with host: $host');
   }
 
   Future<void> capture(String eventName, {Map<String, Object>? properties}) async {

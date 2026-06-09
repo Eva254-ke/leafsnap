@@ -13,9 +13,6 @@ class GoogleSignInButton extends StatelessWidget {
 
   // Official Google brand colors
   static const Color _googleBlue = Color(0xFF4285F4);
-  static const Color _googleRed = Color(0xFFEA4335);
-  static const Color _googleYellow = Color(0xFFFBBC05);
-  static const Color _googleGreen = Color(0xFF34A853);
   static const Color _buttonBg = Color(0xFFFFFFFF);
   static const Color _buttonBorder = Color(0xFFDADCE0);
   static const Color _buttonText = Color(0xFF3C4043);

@@ -10,8 +10,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../components/app_header.dart';
+import '../../components/remote_config_ui.dart';
 import '../../services/auth_service.dart';
+import '../../services/billing_service.dart';
+import '../../services/remote_config_service.dart';
+import '../../services/scan_limit_service.dart';
 import '../auth/auth_screen.dart';
+import '../premium/premium_paywall_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -29,11 +34,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   User? _currentUser;
 
   // Real URLs for legal pages — replace with your actual URLs
-  static const _privacyPolicyUrl = 'https://leafsnap.app/privacy';
-  static const _termsOfUseUrl = 'https://leafsnap.app/terms';
+  static const _legalUrl = 'https://sites.google.com/view/leafsnapai/home';
+  static const _privacyPolicyUrl = _legalUrl;
+  static const _termsOfUseUrl = _legalUrl;
   static const _supportEmail = 'support@leafsnap.app';
   static const _appStoreUrl = 'https://apps.apple.com/app/leafsnap/id123456789';
   static const _playStoreUrl = 'https://play.google.com/store/apps/details?id=com.example.leafsnap_ai';
+  static const _helpUrl = 'https://leafsnap.app/help';
 
   @override
   void initState() {
@@ -102,41 +109,18 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _handleDeleteAccount() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Account?'),
-        content: const Text(
-          'This action cannot be undone. All your data will be permanently deleted.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      try {
-        await _authService.deleteAccount();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account deleted successfully')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
-          );
-        }
+    try {
+      await _authService.deleteAccount();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account deleted successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
       }
     }
   }
@@ -225,12 +209,18 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _sendSupportEmail() async {
+    final rc = RemoteConfigService.instance;
     final uri = Uri(
       scheme: 'mailto',
-      path: _supportEmail,
+      path: _remoteString(RemoteConfigKeys.supportEmail, _supportEmail),
       queryParameters: {
-        'subject': 'LeafSnap Support Request',
-        'body': 'Describe your issue here:\n\n',
+        'subject': _remoteString(
+          RemoteConfigKeys.supportSubject,
+          'LeafSnap Support Request',
+        ),
+        'body': rc.getString(RemoteConfigKeys.supportBody).trim().isEmpty
+            ? 'Describe your issue here:\n\n'
+            : rc.getString(RemoteConfigKeys.supportBody),
       },
     );
     if (await canLaunchUrl(uri)) {
@@ -243,12 +233,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _rateApp() async {
-    final url = Platform.isIOS ? _appStoreUrl : _playStoreUrl;
+    final url = _platformStoreUrl();
     await _openUrl(url);
   }
 
   Future<void> _shareApp() async {
-    final url = Platform.isIOS ? _appStoreUrl : _playStoreUrl;
+    final shareUrl = RemoteConfigService.instance
+        .getString(RemoteConfigKeys.shareUrl)
+        .trim();
+    final url = shareUrl.isEmpty ? _platformStoreUrl() : shareUrl;
     if (!mounted) return;
     // Using Share dialog via platform share intent
     // Note: Add share_plus to pubspec.yaml if not already present
@@ -327,42 +320,120 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _restoreMembership() async {
-    // Use in_app_purchase package to restore purchases
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Restore coming soon')),
-    );
+    if (!mounted) {
+      return;
+    }
+    await BillingService.instance.restorePurchases();
   }
 
   Future<void> _upgradePremium() async {
-    // Navigate to subscription screen or show upgrade dialog
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Premium upgrade coming soon')),
+    if (!mounted) {
+      return;
+    }
+    final scansUsed = await ScanLimitService().getScanCount();
+    if (!mounted) {
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: 'Premium Paywall'),
+        builder: (_) => PremiumPaywallScreen(
+          scansUsed: scansUsed,
+          scanLimit: ScanLimitService.scanLimit,
+        ),
+      ),
     );
+  }
+
+  Future<void> _maybeResetScanLimit() async {
+    final rc = RemoteConfigService.instance;
+    if (!rc.getBool(RemoteConfigKeys.qaScanResetEnabled)) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset today\'s scan limit?'),
+        content: const Text('This will reset today\'s free scans for QA testing.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFF228B22)),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ScanLimitService().reset();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Today\'s free scans reset.')),
+      );
+    }
+  }
+
+  String _remoteString(String key, String fallback) {
+    final value = RemoteConfigService.instance.getString(key).trim();
+    return value.isEmpty ? fallback : value;
+  }
+
+  String _platformStoreUrl() {
+    return Platform.isIOS
+        ? _remoteString(RemoteConfigKeys.iosStoreUrl, _appStoreUrl)
+        : _remoteString(RemoteConfigKeys.androidStoreUrl, _playStoreUrl);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F7),
-      appBar: const AppHeader(title: 'Settings'),
+    return RemoteConfigBuilder(
+      screenId: RemoteConfigScreens.settings,
+      fallbackBackgroundColor: const Color(0xFFF4F6F7),
+      fallbackPrimaryColor: const Color(0xFF2E7D32),
+      builder: (context, remoteConfig) {
+        return Scaffold(
+          backgroundColor: remoteConfig.backgroundColor,
+          appBar: const AppHeader(title: 'Settings'),
       // Opacity fade on page load only (0 → 1, 300ms)
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SafeArea(
-          bottom: true, // Ensure footer respects safe area in production
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Spacing scale: 16px
-            children: [
+          body: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SafeArea(
+              bottom: true, // Ensure footer respects safe area in production
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Spacing scale: 16px
+                children: [
+              if (remoteConfig.banner != null) ...[
+                RemoteScreenBanner(
+                  banner: remoteConfig.banner!,
+                  primaryColor: remoteConfig.primaryColor,
+                ),
+                const SizedBox(height: 8),
+              ],
               _sectionTitle('Membership'),
               _settingsCard(
                 children: [
-                  _settingsTile(
-                    icon: Icons.workspace_premium_outlined,
-                    title: 'My Premium Service',
-                    subtitle: 'Membership Status: Free',
-                    onTap: _upgradePremium,
+                  ValueListenableBuilder<bool>(
+                    valueListenable: BillingService.instance.isPremium,
+                    builder: (context, isPremium, _) {
+                      return _settingsTile(
+                        icon: Icons.workspace_premium_outlined,
+                        title: 'My Premium Service',
+                        subtitle:
+                            'Membership Status: ${isPremium ? 'Premium' : 'Free'}',
+                        onTap: _upgradePremium,
+                        onLongPress: _maybeResetScanLimit,
+                      );
+                    },
                   ),
                   _divider(),
                   _settingsTile(
@@ -434,7 +505,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   _settingsTile(
                     icon: Icons.help_outline,
                     title: 'Help',
-                    onTap: () => _openUrl('https://leafsnap.app/help'),
+                    onTap: () => _openUrl(
+                      _remoteString(RemoteConfigKeys.helpUrl, _helpUrl),
+                    ),
                   ),
                   _divider(),
                   _settingsTile(
@@ -489,45 +562,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         ),
                       ]
                     : [
-                        ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          leading: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2E7D32),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Center(
-                              child: Text(
-                                ((_currentUser?.email?.isNotEmpty ?? false)
-                                    ? _currentUser!.email![0].toUpperCase()
-                                    : 'U'),
-                                style: GoogleFonts.inter(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            'Signed in',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Text(
-                            _currentUser?.email ?? 'User',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: const Color(0xFF7A7A7A),
-                            ),
-                          ),
+                        _settingsTile(
+                          icon: Icons.delete_outline,
+                          title: 'Delete Account',
+                          onTap: _handleDeleteAccount,
                         ),
                         const Divider(
                           height: 1,
@@ -540,18 +578,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           icon: Icons.logout,
                           title: 'Sign Out',
                           onTap: _handleSignOut,
-                        ),
-                        const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Color(0xFFF0F0F0),
-                          indent: 16,
-                          endIndent: 16,
-                        ),
-                        _settingsTile(
-                          icon: Icons.delete_outline,
-                          title: 'Delete Account',
-                          onTap: _handleDeleteAccount,
                         ),
                       ],
               ),
@@ -587,7 +613,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   ),
                   _divider(),
                   _settingsTile(
-                    icon: Icons.share_outlined,
+                    icon: Icons.ios_share_rounded,
                     title: 'Tell Friends',
                     onTap: _shareApp,
                   ),
@@ -595,10 +621,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               ),
               // Bottom padding to respect safe area
               const SizedBox(height: 24), // Spacing scale: 24px
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -633,6 +661,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     String? subtitle,
     Widget? trailing,
     VoidCallback? onTap,
+    VoidCallback? onLongPress,
   }) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // Spacing scale
@@ -656,6 +685,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             ),
       trailing: trailing ?? const Icon(Icons.chevron_right, color: Color(0xFFB0B0B0), size: 18),
       onTap: onTap,
+      onLongPress: onLongPress,
     );
   }
 

@@ -1,17 +1,19 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../components/app_header.dart';
+import '../../../components/remote_config_ui.dart';
+import '../../../models/diagnose_models.dart';
 import '../../../services/diagnose_image_cache.dart';
-import '../../../services/perenual_api.dart';
+import '../../../services/diagnose_service.dart';
 import '../camera/camera_screen.dart';
 import 'diagnose_history_screen.dart';
+import 'plant_detail_screen.dart';
+import 'issue_detail_screen.dart';
 
 class DiagnoseScreen extends StatefulWidget {
   const DiagnoseScreen({super.key, this.initialImage});
@@ -24,75 +26,14 @@ class DiagnoseScreen extends StatefulWidget {
 
 class _DiagnoseScreenState extends State<DiagnoseScreen>
     with SingleTickerProviderStateMixin {
-  static const Duration _showcaseCacheTtl = Duration(days: 10);
   static const double _showcaseCardBaseHeight = 242;
   static const double _showcaseCardShadowBuffer = 38;
-  static const String _plantsCacheKey = 'diagnose_showcase_plants';
-  static const String _plantsCacheTsKey = 'diagnose_showcase_plants_ts';
-  static const String _issuesCacheKey = 'diagnose_showcase_issues';
-  static const String _issuesCacheTsKey = 'diagnose_showcase_issues_ts';
-
-  static const List<_PlantShowcaseSeed> _plantSeeds = <_PlantShowcaseSeed>[
-    _PlantShowcaseSeed(
-      query: 'Monstera',
-      focusLabel: 'Indoor match',
-      note: 'Compare yellow edges, tears, and broad-leaf discoloration.',
-      preferredTerms: <String>['monstera', 'deliciosa', 'swiss cheese'],
-    ),
-    _PlantShowcaseSeed(
-      query: 'Solanum lycopersicum',
-      focusLabel: 'Crop match',
-      note: 'Useful for spotting curl, blight, and lower-leaf stress early.',
-      preferredTerms: <String>['tomato', 'solanum lycopersicum'],
-    ),
-    _PlantShowcaseSeed(
-      query: 'Rose',
-      focusLabel: 'Flowering match',
-      note: 'Check mildew, black spots, and pest damage on delicate foliage.',
-      preferredTerms: <String>['rose', 'rosa'],
-    ),
-    _PlantShowcaseSeed(
-      query: 'Pepper',
-      focusLabel: 'Garden match',
-      note: 'Great reference for holes, silvering, and heat-stress symptoms.',
-      preferredTerms: <String>['pepper', 'capsicum'],
-    ),
-  ];
-
-  static const List<_IssueShowcaseSeed> _issueSeeds = <_IssueShowcaseSeed>[
-    _IssueShowcaseSeed(
-      query: 'powdery mildew',
-      badge: 'Fungal',
-      note: 'White, dusty growth that spreads across the leaf surface.',
-      aliases: <String>['mildew', 'powdery'],
-    ),
-    _IssueShowcaseSeed(
-      query: 'leaf spot',
-      badge: 'Leaf damage',
-      note: 'Dark lesions, yellow halos, and fast-spreading spotting.',
-      aliases: <String>['spot', 'leaf spot'],
-    ),
-    _IssueShowcaseSeed(
-      query: 'aphids',
-      badge: 'Pests',
-      note: 'Sap-sucking insects that curl new growth and weaken stems.',
-      aliases: <String>['aphid', 'insect'],
-    ),
-    _IssueShowcaseSeed(
-      query: 'blight',
-      badge: 'Urgent',
-      note: 'Rapid browning and collapse that can move through a plant fast.',
-      aliases: <String>['blight', 'fungi'],
-    ),
-  ];
-
-  final PerenualApi _perenualApi = PerenualApi();
 
   late final AnimationController _animationController;
   late final Animation<double> _fadeAnimation;
 
-  List<_DiagnosePlantCard> _plantCards = <_DiagnosePlantCard>[];
-  List<_DiagnoseIssueCard> _issueCards = <_DiagnoseIssueCard>[];
+  List<DiagnosePlantCard> _plantCards = <DiagnosePlantCard>[];
+  List<DiagnoseIssueCard> _issueCards = <DiagnoseIssueCard>[];
   bool _isLoadingShowcase = false;
   String? _showcaseError;
 
@@ -129,115 +70,22 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
   }
 
   Future<void> _loadCachedShowcase({required bool allowStale}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final cachedPlants = _readCachedPlantCards(
-      prefs: prefs,
-      cacheKey: _plantsCacheKey,
-      cacheTsKey: _plantsCacheTsKey,
-      allowStale: allowStale,
-    );
-    final cachedIssues = _readCachedIssueCards(
-      prefs: prefs,
-      cacheKey: _issuesCacheKey,
-      cacheTsKey: _issuesCacheTsKey,
-      allowStale: allowStale,
-    );
+    try {
+      final cachedPlants = await DiagnoseService.instance.getPlantCards(forceRefresh: false);
+      final cachedIssues = await DiagnoseService.instance.getIssueCards(forceRefresh: false);
 
-    if (!mounted) {
-      return;
-    }
+      if (!mounted) {
+        return;
+      }
 
-    if (cachedPlants != null || cachedIssues != null) {
       setState(() {
-        if (cachedPlants != null) {
-          _plantCards = cachedPlants;
-        }
-        if (cachedIssues != null) {
-          _issueCards = cachedIssues;
-        }
+        _plantCards = cachedPlants;
+        _issueCards = cachedIssues;
       });
       unawaited(_warmImageCache());
+    } catch (_) {
+      // Ignore cache loading errors, _loadShowcase will fetch fresh data.
     }
-  }
-
-  List<_DiagnosePlantCard>? _readCachedPlantCards({
-    required SharedPreferences prefs,
-    required String cacheKey,
-    required String cacheTsKey,
-    required bool allowStale,
-  }) {
-    final cachedBody = prefs.getString(cacheKey);
-    final cachedAt = prefs.getInt(cacheTsKey);
-    if (cachedBody == null || cachedAt == null) {
-      return null;
-    }
-
-    final age = DateTime.now().difference(
-      DateTime.fromMillisecondsSinceEpoch(cachedAt),
-    );
-    if (!allowStale && age > _showcaseCacheTtl) {
-      return null;
-    }
-
-    final decoded = jsonDecode(cachedBody) as List<dynamic>;
-    final cards = decoded
-        .cast<Map<String, dynamic>>()
-        .map(_DiagnosePlantCard.fromCacheMap)
-        .toList();
-    final validQueries = _plantSeeds.map((seed) => seed.query).toSet();
-    if (cards.any((item) => !validQueries.contains(item.query))) {
-      return null;
-    }
-    return cards;
-  }
-
-  List<_DiagnoseIssueCard>? _readCachedIssueCards({
-    required SharedPreferences prefs,
-    required String cacheKey,
-    required String cacheTsKey,
-    required bool allowStale,
-  }) {
-    final cachedBody = prefs.getString(cacheKey);
-    final cachedAt = prefs.getInt(cacheTsKey);
-    if (cachedBody == null || cachedAt == null) {
-      return null;
-    }
-
-    final age = DateTime.now().difference(
-      DateTime.fromMillisecondsSinceEpoch(cachedAt),
-    );
-    if (!allowStale && age > _showcaseCacheTtl) {
-      return null;
-    }
-
-    final decoded = jsonDecode(cachedBody) as List<dynamic>;
-    return decoded
-        .cast<Map<String, dynamic>>()
-        .map(_DiagnoseIssueCard.fromCacheMap)
-        .toList();
-  }
-
-  Future<void> _saveShowcase({
-    required List<_DiagnosePlantCard> plants,
-    required List<_DiagnoseIssueCard> issues,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _plantsCacheKey,
-      jsonEncode(plants.map((item) => item.toCacheMap()).toList()),
-    );
-    await prefs.setInt(
-      _plantsCacheTsKey,
-      DateTime.now().millisecondsSinceEpoch,
-    );
-    await prefs.setString(
-      _issuesCacheKey,
-      jsonEncode(issues.map((item) => item.toCacheMap()).toList()),
-    );
-    await prefs.setInt(
-      _issuesCacheTsKey,
-      DateTime.now().millisecondsSinceEpoch,
-    );
   }
 
   Future<void> _loadShowcase({bool forceRefresh = false}) async {
@@ -253,8 +101,8 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
     });
 
     try {
-      final plantCards = await _fetchPlantCards();
-      final issueCards = await _fetchIssueCards();
+      final plantCards = await DiagnoseService.instance.getPlantCards(forceRefresh: forceRefresh);
+      final issueCards = await DiagnoseService.instance.getIssueCards(forceRefresh: forceRefresh);
 
       if (!mounted) {
         return;
@@ -266,7 +114,6 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
         _showcaseError = null;
       });
 
-      await _saveShowcase(plants: plantCards, issues: issueCards);
       unawaited(_warmImageCache());
     } catch (error) {
       if (!mounted) {
@@ -283,134 +130,6 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
         });
       }
     }
-  }
-
-  Future<List<_DiagnosePlantCard>> _fetchPlantCards() async {
-    final cards = <_DiagnosePlantCard>[];
-
-    for (final seed in _plantSeeds) {
-      final results = await _perenualApi.searchSpecies(query: seed.query, page: 1);
-      final match = _bestPlantMatch(seed, results);
-      final imageUrl = match?.imageUrl ?? match?.thumbnailUrl;
-      if (match == null || !_hasUsableImageUrl(imageUrl)) {
-        continue;
-      }
-
-      cards.add(
-        _DiagnosePlantCard(
-          query: seed.query,
-          focusLabel: seed.focusLabel,
-          note: seed.note,
-          species: match,
-        ),
-      );
-    }
-
-    return cards;
-  }
-
-  Future<List<_DiagnoseIssueCard>> _fetchIssueCards() async {
-    final cards = <_DiagnoseIssueCard>[];
-
-    for (final seed in _issueSeeds) {
-      final results = await _perenualApi.searchDiseases(query: seed.query, page: 1);
-      final match = _bestIssueMatch(seed, results);
-      if (match == null || !_hasUsableImageUrl(match.thumbnailUrl)) {
-        continue;
-      }
-
-      cards.add(
-        _DiagnoseIssueCard(
-          query: seed.query,
-          badge: seed.badge,
-          note: seed.note,
-          disease: match,
-        ),
-      );
-    }
-
-    return cards;
-  }
-
-  PerenualSpeciesSummary? _bestPlantMatch(
-    _PlantShowcaseSeed seed,
-    List<PerenualSpeciesSummary> results,
-  ) {
-    PerenualSpeciesSummary? bestMatch;
-    PerenualSpeciesSummary? fallbackWithImage;
-    var bestScore = -1;
-    final normalizedQuery = seed.query.toLowerCase();
-
-    for (final species in results) {
-      final haystack = '${species.commonName} ${species.scientificName}'.toLowerCase();
-      final hasImage = _hasUsableImageUrl(species.imageUrl) ||
-          _hasUsableImageUrl(species.thumbnailUrl);
-
-      if (hasImage) {
-        fallbackWithImage ??= species;
-      }
-
-      var score = 0;
-      if (haystack.contains(normalizedQuery)) {
-        score += 5;
-      }
-      for (final preferredTerm in seed.preferredTerms) {
-        if (haystack.contains(preferredTerm.toLowerCase())) {
-          score += 2;
-        }
-      }
-      if (hasImage) {
-        score += 3;
-      }
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = species;
-      }
-    }
-
-    return bestMatch ?? fallbackWithImage ?? (results.isEmpty ? null : results.first);
-  }
-
-  PerenualDiseaseSummary? _bestIssueMatch(
-    _IssueShowcaseSeed seed,
-    List<PerenualDiseaseSummary> results,
-  ) {
-    PerenualDiseaseSummary? bestMatch;
-    PerenualDiseaseSummary? fallbackWithImage;
-    var bestScore = -1;
-    final normalizedQuery = seed.query.toLowerCase();
-
-    for (final issue in results) {
-      final haystack =
-          '${issue.commonName} ${issue.scientificName} ${issue.otherNames.join(' ')}'
-              .toLowerCase();
-      final hasImage = _hasUsableImageUrl(issue.thumbnailUrl);
-
-      if (hasImage) {
-        fallbackWithImage ??= issue;
-      }
-
-      var score = 0;
-      if (haystack.contains(normalizedQuery)) {
-        score += 5;
-      }
-      for (final alias in seed.aliases) {
-        if (haystack.contains(alias.toLowerCase())) {
-          score += 2;
-        }
-      }
-      if (hasImage) {
-        score += 3;
-      }
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = issue;
-      }
-    }
-
-    return bestMatch ?? fallbackWithImage ?? (results.isEmpty ? null : results.first);
   }
 
   bool _hasUsableImageUrl(String? value) {
@@ -474,19 +193,16 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
   Widget build(BuildContext context) {
     final hasContent = _plantCards.isNotEmpty || _issueCards.isNotEmpty;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4FBF5),
+    return RemoteConfigBuilder(
+      screenId: RemoteConfigScreens.diagnose,
+      fallbackBackgroundColor: const Color(0xFFF4FBF5),
+      fallbackPrimaryColor: const Color(0xFF1D7A43),
+      builder: (context, remoteConfig) {
+        return Scaffold(
+      backgroundColor: remoteConfig.backgroundColor,
       appBar: AppHeader(
         title: 'Diagnose',
         rightActions: [
-          IconButton(
-            icon: const Icon(Icons.support_agent_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Support coming soon.')),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.history),
             onPressed: () {
@@ -509,6 +225,13 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
+              if (remoteConfig.banner != null) ...[
+                RemoteScreenBanner(
+                  banner: remoteConfig.banner!,
+                  primaryColor: remoteConfig.primaryColor,
+                ),
+                const SizedBox(height: 16),
+              ],
               _buildHeroCard(),
               const SizedBox(height: 18),
               if (_showcaseError != null)
@@ -562,6 +285,8 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
           ),
         ),
       ),
+        );
+      },
     );
   }
 
@@ -676,7 +401,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
                   runSpacing: 10,
                   children: [
                     _buildMetricPill(
-                      icon: Icons.local_florist_rounded,
+                      icon: Icons.nature,
                       label: '${_plantCards.length} plant matches',
                     ),
                     _buildMetricPill(
@@ -684,7 +409,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
                       label: '${_issueCards.length} issue cards',
                     ),
                     _buildMetricPill(
-                      icon: Icons.save_alt_rounded,
+                      icon: Icons.compare_arrows_rounded,
                       label: 'Quick compare',
                     ),
                   ],
@@ -807,11 +532,19 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
     );
   }
 
-  Widget _buildPlantCard(_DiagnosePlantCard plant) {
-    return SizedBox(
-      width: 188,
-      height: _showcaseCardHeight(context),
+  Widget _buildPlantCard(DiagnosePlantCard plant) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PlantDetailScreen(plant: plant),
+          ),
+        );
+      },
       child: Container(
+        width: 188,
+        height: _showcaseCardHeight(context),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
@@ -826,26 +559,14 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                _buildCachedImage(
-                  imageUrl: plant.imageUrl,
-                  width: 188,
-                  height: 118,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(22),
-                  ),
-                ),
-                Positioned(
-                  left: 12,
-                  top: 12,
-                  child: _buildCardBadge(
-                    plant.focusLabel,
-                    background: const Color(0xCCFFFFFF),
-                    foreground: const Color(0xFF1D7A43),
-                  ),
-                ),
-              ],
+            Hero(
+              tag: 'plant_image_${plant.query}',
+              child: _buildCachedImage(
+                imageUrl: plant.imageUrl,
+                width: 188,
+                height: 116,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+              ),
             ),
             Expanded(
               child: Padding(
@@ -903,11 +624,15 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
     );
   }
 
-  Widget _buildIssueCard(_DiagnoseIssueCard issue) {
-    return SizedBox(
-      width: 194,
-      height: _showcaseCardHeight(context),
+  Widget _buildIssueCard(DiagnoseIssueCard issue) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () => Navigator.push(context, MaterialPageRoute(
+        builder: (_) => IssueDetailScreen(issue: issue),
+      )),
       child: Container(
+        width: 194,
+        height: _showcaseCardHeight(context),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
@@ -924,12 +649,15 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
           children: [
             Stack(
               children: [
-                _buildCachedImage(
-                  imageUrl: issue.imageUrl,
-                  width: 194,
-                  height: 116,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(22),
+                Hero(
+                  tag: 'issue_image_${issue.query}',
+                  child: _buildCachedImage(
+                    imageUrl: issue.imageUrl,
+                    width: 194,
+                    height: 116,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(22),
+                    ),
                   ),
                 ),
                 Positioned(
@@ -1229,7 +957,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
       ),
       child: const Center(
         child: Icon(
-          Icons.local_florist_rounded,
+          Icons.nature,
           size: 34,
           color: Color(0xFF2B7B45),
         ),
@@ -1238,105 +966,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen>
   }
 }
 
-class _PlantShowcaseSeed {
-  const _PlantShowcaseSeed({
-    required this.query,
-    required this.focusLabel,
-    required this.note,
-    this.preferredTerms = const <String>[],
-  });
 
-  final String query;
-  final String focusLabel;
-  final String note;
-  final List<String> preferredTerms;
-}
-
-class _IssueShowcaseSeed {
-  const _IssueShowcaseSeed({
-    required this.query,
-    required this.badge,
-    required this.note,
-    this.aliases = const <String>[],
-  });
-
-  final String query;
-  final String badge;
-  final String note;
-  final List<String> aliases;
-}
-
-class _DiagnosePlantCard {
-  const _DiagnosePlantCard({
-    required this.query,
-    required this.focusLabel,
-    required this.note,
-    required this.species,
-  });
-
-  factory _DiagnosePlantCard.fromCacheMap(Map<String, dynamic> map) {
-    return _DiagnosePlantCard(
-      query: map['query'] as String? ?? '',
-      focusLabel: map['focusLabel'] as String? ?? '',
-      note: map['note'] as String? ?? '',
-      species: PerenualSpeciesSummary.fromCacheMap(
-        (map['species'] as Map<String, dynamic>? ?? <String, dynamic>{}),
-      ),
-    );
-  }
-
-  final String query;
-  final String focusLabel;
-  final String note;
-  final PerenualSpeciesSummary species;
-
-  String? get imageUrl => species.imageUrl ?? species.thumbnailUrl;
-
-  Map<String, dynamic> toCacheMap() {
-    return <String, dynamic>{
-      'query': query,
-      'focusLabel': focusLabel,
-      'note': note,
-      'species': species.toCacheMap(),
-    };
-  }
-}
-
-class _DiagnoseIssueCard {
-  const _DiagnoseIssueCard({
-    required this.query,
-    required this.badge,
-    required this.note,
-    required this.disease,
-  });
-
-  factory _DiagnoseIssueCard.fromCacheMap(Map<String, dynamic> map) {
-    return _DiagnoseIssueCard(
-      query: map['query'] as String? ?? '',
-      badge: map['badge'] as String? ?? '',
-      note: map['note'] as String? ?? '',
-      disease: PerenualDiseaseSummary.fromCacheMap(
-        (map['disease'] as Map<String, dynamic>? ?? <String, dynamic>{}),
-      ),
-    );
-  }
-
-  final String query;
-  final String badge;
-  final String note;
-  final PerenualDiseaseSummary disease;
-
-  String? get imageUrl => disease.thumbnailUrl;
-
-  Map<String, dynamic> toCacheMap() {
-    return <String, dynamic>{
-      'query': query,
-      'badge': badge,
-      'note': note,
-      'disease': disease.toCacheMap(),
-    };
-  }
-}
 
 enum _BannerTone {
   neutral,

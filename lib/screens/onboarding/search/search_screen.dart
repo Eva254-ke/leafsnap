@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../services/api_error.dart';
 import '../../../services/perenual_api.dart';
 import '../home/plant_detail_screen.dart';
 
@@ -23,6 +24,11 @@ class _SearchScreenState extends State<SearchScreen> {
   // Reliable fallback images - all verified working URLs (Unsplash)
   static const Map<String, String> _fallbackImages = {
     'Tomato': 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&h=400&fit=crop',
+    'Maize': 'https://commons.wikimedia.org/wiki/Special:FilePath/Corn%20Zea%20mays%20Plant%202000px.jpg?width=800',
+    'Corn': 'https://commons.wikimedia.org/wiki/Special:FilePath/Corn%20Zea%20mays%20Plant%202000px.jpg?width=800',
+    'Beans': 'https://commons.wikimedia.org/wiki/Special:FilePath/Phaseolus%20vulgaris%2C%20the%20common%20green%20bean.JPG?width=800',
+    'Bean': 'https://commons.wikimedia.org/wiki/Special:FilePath/Phaseolus%20vulgaris%2C%20the%20common%20green%20bean.JPG?width=800',
+    'Phaseolus vulgaris': 'https://commons.wikimedia.org/wiki/Special:FilePath/Phaseolus%20vulgaris%2C%20the%20common%20green%20bean.JPG?width=800',
     'Snake Plant': 'https://images.unsplash.com/photo-1599598425947-320d7f8c6b84?w=400&h=400&fit=crop',
     'Monstera': 'https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=400&h=400&fit=crop',
     'Spinach': 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&h=400&fit=crop',
@@ -175,7 +181,9 @@ class _SearchScreenState extends State<SearchScreen> {
       if (!mounted || requestId != _searchRequestId) return;
 
       setState(() {
-        _error = error.toString();
+        _error = isRateLimitError(error)
+            ? 'Plant search is busy right now. Please try again later.'
+            : error.toString();
         _results = <PerenualSpeciesSummary>[];
       });
     } finally {
@@ -239,19 +247,24 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   String _getReliableImageUrl(PerenualSpeciesSummary plant) {
-    final apiUrl = _resolvedImageUrl(plant);
-    if (apiUrl != null) return apiUrl;
-    
-    // Try fallback map
     final normalizedName = plant.commonName.trim().toLowerCase();
     for (final entry in _fallbackImages.entries) {
       if (entry.key.toLowerCase() == normalizedName) {
         return entry.value;
       }
     }
+
+    final normalizedScientificName = plant.scientificName.trim().toLowerCase();
+    for (final entry in _fallbackImages.entries) {
+      if (entry.key.toLowerCase() == normalizedScientificName) {
+        return entry.value;
+      }
+    }
+
+    final apiUrl = _resolvedImageUrl(plant);
+    if (apiUrl != null) return apiUrl;
     
-    // Generic fallback
-    return 'https://images.unsplash.com/photo-1443890923422-7819ed4101c0?w=400&h=400&fit=crop';
+    return 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=400&h=400&fit=crop';
   }
 
   Future<void> _openPlantDetails(PerenualSpeciesSummary plant) async {

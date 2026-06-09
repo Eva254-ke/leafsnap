@@ -6,8 +6,8 @@ void main() {
   testWidgets('privacy gate leads into a single animated feature film and home', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpWidget(MyApp(initialization: Future<void>.value()));
+    await tester.pump(const Duration(milliseconds: 5100));
 
     expect(find.text('Continue'), findsOneWidget);
     expect(find.text('Know every plant you spot'), findsOneWidget);

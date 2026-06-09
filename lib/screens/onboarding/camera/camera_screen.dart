@@ -1,11 +1,19 @@
+import 'dart:math' as math;
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
+import '../../../services/api_error.dart';
+import '../../../services/billing_service.dart';
 import '../../../services/plantnet_api.dart';
+import '../../../services/scan_limit_service.dart';
+import '../../premium/premium_paywall_screen.dart';
 import 'camera_tools.dart';
 import 'plant_result_screen.dart';
 
@@ -22,6 +30,7 @@ class _CameraScreenState extends State<CameraScreen>
     with WidgetsBindingObserver {
   final ImagePicker _picker = ImagePicker();
   final PlantNetApi _api = PlantNetApi();
+  final ScanLimitService _scanLimitService = ScanLimitService();
   late CameraToolDefinition _selectedTool;
 
   List<CameraDescription> _cameras = [];
@@ -30,11 +39,21 @@ class _CameraScreenState extends State<CameraScreen>
   int _cameraIndex = 0;
   bool _isFlashOn = false;
   bool _isSettingUpCamera = false;
+  bool _isPickingImage = false;
 
   File? _image;
   bool _isLoading = false;
   int _analysisStepIndex = 0;
   String? _error;
+  String _selectedFocus = 'auto';
+
+  static const List<_FocusPart> _focusParts = [
+    _FocusPart('auto', 'Auto', Icons.auto_awesome_rounded),
+    _FocusPart('leaf', 'Leaf', Icons.eco_rounded),
+    _FocusPart('flower', 'Flower', Icons.local_florist_rounded),
+    _FocusPart('fruit', 'Fruit', Icons.spa_rounded),
+    _FocusPart('bark', 'Bark', Icons.forest_rounded),
+  ];
 
   @override
   void initState() {
@@ -49,7 +68,7 @@ class _CameraScreenState extends State<CameraScreen>
     WidgetsBinding.instance.removeObserver(this);
     final controller = _controller;
     _controller = null;
-    controller?.dispose();
+    controller?.dispose().catchError((_) {});
     super.dispose();
   }
 
@@ -63,11 +82,17 @@ class _CameraScreenState extends State<CameraScreen>
       case AppLifecycleState.resumed:
         _restoreCameraIfNeeded();
         break;
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.hidden:
+      // inactive & hidden are transient — the image picker triggers
+      // inactive but the camera should survive. Only paused/detached
+      // means we've genuinely left the screen.
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
-        _disposeCameraController();
+        if (!_isPickingImage) {
+          _disposeCameraController();
+        }
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
         break;
     }
   }
@@ -78,6 +103,10 @@ class _CameraScreenState extends State<CameraScreen>
     }
 
     try {
+      final hasPermission = await _ensureCameraPermission();
+      if (!hasPermission) {
+        return;
+      }
       final cameras = await availableCameras();
       if (!mounted) {
         return;
@@ -86,20 +115,72 @@ class _CameraScreenState extends State<CameraScreen>
         _cameras = cameras;
       });
       if (cameras.isNotEmpty) {
-        final preferredCamera =
-            _activeCamera != null && cameras.contains(_activeCamera)
-            ? _activeCamera!
-            : cameras.first;
+        final preferredCamera = _preferredCamera(cameras);
         await _initController(preferredCamera);
+      } else {
+        setState(() {
+          _error = 'No camera was found on this device. You can still identify from gallery.';
+        });
       }
     } catch (error) {
       if (!mounted) {
         return;
       }
       setState(() {
-        _error = 'Camera unavailable.';
+        _error = _cameraErrorMessage(error);
       });
     }
+  }
+
+  Future<bool> _ensureCameraPermission() async {
+    var status = await Permission.camera.status;
+    if (status.isDenied) {
+      status = await Permission.camera.request();
+    }
+
+    if (!mounted) {
+      return false;
+    }
+
+    if (status.isGranted || status.isLimited) {
+      return true;
+    }
+
+    setState(() {
+      _error = status.isPermanentlyDenied || status.isRestricted
+          ? 'Camera access is blocked. Enable it in settings, or choose a photo from gallery.'
+          : 'Camera permission is needed to scan a plant. You can choose a photo from gallery.';
+    });
+    return false;
+  }
+
+  CameraDescription _preferredCamera(List<CameraDescription> cameras) {
+    if (_activeCamera != null && cameras.contains(_activeCamera)) {
+      return _activeCamera!;
+    }
+    for (final camera in cameras) {
+      if (camera.lensDirection == CameraLensDirection.back) {
+        return camera;
+      }
+    }
+    return cameras.first;
+  }
+
+  String _cameraErrorMessage(Object error) {
+    if (error is CameraException) {
+      switch (error.code) {
+        case 'CameraAccessDenied':
+        case 'CameraAccessDeniedWithoutPrompt':
+          return 'Camera permission was denied. Enable it in settings, or choose a photo from gallery.';
+        case 'CameraAccessRestricted':
+          return 'Camera access is restricted on this device.';
+        case 'CameraInUse':
+          return 'The camera is being used by another app. Close it and try again.';
+        default:
+          return 'Camera unavailable. Try again, or choose a photo from gallery.';
+      }
+    }
+    return 'Camera unavailable. Try again, or choose a photo from gallery.';
   }
 
   Future<void> _disposeCameraController() async {
@@ -112,7 +193,12 @@ class _CameraScreenState extends State<CameraScreen>
     if (mounted) {
       setState(() {});
     }
-    await controller.dispose();
+    try {
+      await controller.dispose();
+    } catch (_) {
+      // CameraX can throw if Flutter tears down a preview while it is still
+      // negotiating a surface. The controller is already detached from UI.
+    }
   }
 
   Future<void> _initController(CameraDescription description) async {
@@ -145,12 +231,16 @@ class _CameraScreenState extends State<CameraScreen>
         _error = null;
       });
     } catch (error) {
-      await controller.dispose();
+      try {
+        await controller.dispose();
+      } catch (_) {
+        // Ignore secondary dispose errors after an initialization failure.
+      }
       if (!mounted) {
         return;
       }
       setState(() {
-        _error = 'Camera unavailable.';
+        _error = _cameraErrorMessage(error);
       });
     } finally {
       _isSettingUpCamera = false;
@@ -187,7 +277,16 @@ class _CameraScreenState extends State<CameraScreen>
     }
     if (_controller == null || !_controller!.value.isInitialized) {
       setState(() {
-        _error = 'Camera not ready.';
+        _error = 'Preparing camera...';
+      });
+      await _restoreCameraIfNeeded();
+      if (!mounted) {
+        return;
+      }
+    }
+    if (_controller == null || !_controller!.value.isInitialized) {
+      setState(() {
+        _error = 'Camera is not ready. Try again, or choose a photo from gallery.';
       });
       return;
     }
@@ -205,8 +304,9 @@ class _CameraScreenState extends State<CameraScreen>
       }
       setState(() {
         _image = File(file.path);
+        _selectedFocus = 'auto';
       });
-      await _identifyPlant();
+      await _disposeCameraController();
     } catch (error) {
       if (!mounted) {
         return;
@@ -226,18 +326,38 @@ class _CameraScreenState extends State<CameraScreen>
       _showToolUnavailable();
       return;
     }
+    if (_isLoading || _isPickingImage) {
+      return;
+    }
 
     setState(() {
       _error = null;
     });
 
-    final XFile? picked = await _picker.pickImage(
-      source: source,
-      imageQuality: 85,
-      maxWidth: 1600,
-    );
+    XFile? picked;
+    _isPickingImage = true;
+    try {
+      picked = await _picker.pickImage(
+        source: source,
+        imageQuality: 76,
+        maxWidth: 1280,
+      );
+    } on PlatformException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _error = error.code == 'already_active'
+            ? 'Photo picker is already open.'
+            : 'Could not open photo picker. Try again.';
+      });
+      return;
+    } finally {
+      _isPickingImage = false;
+    }
 
-    if (picked == null) {
+    final pickedFile = picked;
+    if (pickedFile == null) {
       return;
     }
 
@@ -245,10 +365,9 @@ class _CameraScreenState extends State<CameraScreen>
       return;
     }
     setState(() {
-      _image = File(picked.path);
+      _image = File(pickedFile.path);
+      _selectedFocus = 'auto';
     });
-
-    await _identifyPlant();
   }
 
   Future<void> _toggleFlash() async {
@@ -286,6 +405,24 @@ class _CameraScreenState extends State<CameraScreen>
       return;
     }
 
+    final isPremium = BillingService.instance.isPremium.value;
+    final canScan = isPremium || await _scanLimitService.canScan();
+    if (!canScan) {
+      await _openPaywall(
+        headline: 'Upgrade to keep scanning',
+        subhead: 'You have used today\'s free scans. Go premium to continue.',
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _error = 'Upgrade to keep scanning.';
+        _image = null;
+        _isLoading = false;
+      });
+      await _restoreCameraIfNeeded();
+      return;
+    }
     setState(() {
       _isLoading = true;
       _error = null;
@@ -296,11 +433,15 @@ class _CameraScreenState extends State<CameraScreen>
       final stepProgress = _runAnalysisSteps();
       final response = await _api.identify(
         images: [selectedImage],
-        organs: ['auto'],
+        organs: [_selectedFocus],
         project: 'all',
         language: 'en',
+        includeRelatedImages: true,
       );
       await stepProgress;
+      if (!isPremium) {
+        await _scanLimitService.recordScan();
+      }
 
       final results = response['results'] as List<dynamic>?;
       if (results == null || results.isEmpty) {
@@ -339,17 +480,87 @@ class _CameraScreenState extends State<CameraScreen>
       if (!mounted) {
         return;
       }
-      setState(() {
-        _error = error.toString();
-      });
-    } finally {
+      debugPrint('Plant identification failed: $error');
+      await _logIdentificationDiagnostics();
+      final message = _scanFailureMessage(error);
+      await _openResultScreen(
+        PlantResultScreen(
+          imageFile: selectedImage,
+          scientificName: 'Unknown',
+          score: 0,
+          errorMessage: message,
+          selectedTool: _selectedTool,
+        ),
+      );
       if (!mounted) {
         return;
       }
-      setState(() {
-        _isLoading = false;
-      });
+      if (isRateLimitError(error)) {
+        setState(() {
+          _error = message;
+        });
+      } else {
+        setState(() {
+          _error = message;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  Future<void> _logIdentificationDiagnostics() async {}
+
+  String _scanFailureMessage(Object error) {
+    if (isRateLimitError(error)) {
+      return 'Plant identification is busy right now. Please try again later.';
+    }
+    if (error is ApiUnavailableException) {
+      return 'LeafSnap AI identification is temporarily unavailable. Please try again soon.';
+    }
+    if (isNetworkApiError(error)) {
+      return 'LeafSnap AI could not reach the identification service. Check your connection and try again.';
+    }
+    if (error is HttpException) {
+      return 'LeafSnap AI had trouble identifying this photo. Try again with a clear leaf, flower, fruit, or bark shot.';
+    }
+    if (error is FormatException) {
+      return 'LeafSnap AI received an unexpected identification response. Please try again.';
+    }
+    return 'We could not complete the scan. Try again with a clearer plant photo.';
+  }
+
+  Future<void> _openPaywall({String? headline, String? subhead}) async {
+    await _disposeCameraController();
+    if (!mounted) {
+      return;
+    }
+
+    final scansUsed = await _scanLimitService.getScanCount();
+    if (!mounted) {
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: 'Premium Paywall'),
+        builder: (_) => PremiumPaywallScreen(
+          headline: headline,
+          subhead: subhead,
+          scansUsed: scansUsed,
+          scanLimit: ScanLimitService.scanLimit,
+        ),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+    await _restoreCameraIfNeeded();
   }
 
   Future<void> _openResultScreen(PlantResultScreen screen) async {
@@ -372,6 +583,7 @@ class _CameraScreenState extends State<CameraScreen>
       _image = null;
       _error = null;
       _analysisStepIndex = 0;
+      _isLoading = false;
     });
     await _restoreCameraIfNeeded();
   }
@@ -385,20 +597,8 @@ class _CameraScreenState extends State<CameraScreen>
       setState(() {
         _analysisStepIndex = i;
       });
-      await Future.delayed(const Duration(milliseconds: 600));
+      await Future.delayed(const Duration(milliseconds: 320));
     }
-  }
-
-  void _selectTool(CameraToolDefinition tool) {
-    if (_isLoading) {
-      return;
-    }
-
-    setState(() {
-      _selectedTool = tool;
-      _error = tool.isRunnable ? null : tool.unavailableMessage;
-      _analysisStepIndex = 0;
-    });
   }
 
   void _showToolUnavailable() {
@@ -409,6 +609,83 @@ class _CameraScreenState extends State<CameraScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  Future<void> _scanReviewedImage() async {
+    if (_image == null) {
+      setState(() {
+        _error = 'Capture or choose a photo first.';
+      });
+      return;
+    }
+    await _identifyPlant();
+  }
+
+  Future<void> _retakePhoto() async {
+    setState(() {
+      _image = null;
+      _error = null;
+      _selectedFocus = 'auto';
+    });
+    await _restoreCameraIfNeeded();
+  }
+
+  Future<void> _cropImageToGuide() async {
+    final image = _image;
+    if (image == null || _isLoading) {
+      return;
+    }
+
+    final croppedFile = await Navigator.of(context).push<File>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _CropImageScreen(imageFile: image),
+      ),
+    );
+
+    if (!mounted || croppedFile == null) {
+      return;
+    }
+
+    setState(() {
+      _image = croppedFile;
+      _error = null;
+    });
+  }
+
+  static Future<File> _writeCroppedImage({
+    required File originalFile,
+    required Rect sourceRect,
+  }) async {
+    final bytes = await originalFile.readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final source = frame.image;
+    final safeRect = sourceRect
+        .intersect(Rect.fromLTWH(0, 0, source.width.toDouble(), source.height.toDouble()));
+    final outputSide = math.min(safeRect.width, safeRect.height).round().clamp(1, 1600);
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.drawImageRect(
+      source,
+      safeRect,
+      Rect.fromLTWH(0, 0, outputSide.toDouble(), outputSide.toDouble()),
+      Paint(),
+    );
+    final picture = recorder.endRecording();
+    final cropped = await picture.toImage(outputSide, outputSide);
+    final data = await cropped.toByteData(format: ui.ImageByteFormat.png);
+    source.dispose();
+    cropped.dispose();
+
+    if (data == null) {
+      throw StateError('Could not encode cropped image.');
+    }
+
+    final path =
+        '${originalFile.parent.path}${Platform.pathSeparator}leafsnap_crop_${DateTime.now().millisecondsSinceEpoch}.png';
+    return File(path).writeAsBytes(data.buffer.asUint8List());
   }
 
   @override
@@ -423,18 +700,7 @@ class _CameraScreenState extends State<CameraScreen>
             Positioned.fill(
               child: _image == null
                   ? (_controller == null || !_controller!.value.isInitialized
-                      ? Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFF0B0D0F), Color(0xFF0F1A12)],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                          ),
-                          child: const Center(
-                            child: CircularProgressIndicator(color: Color(0xFF48C774)),
-                          ),
-                        )
+                      ? _cameraPlaceholder()
                       : CameraPreview(_controller!))
                   : Image.file(_image!, fit: BoxFit.cover),
             ),
@@ -535,20 +801,75 @@ class _CameraScreenState extends State<CameraScreen>
                             ),
                           ),
                         ),
-                        _supportBadge(_selectedTool),
+                        if (_selectedTool.requiresPremium) _accessBadge(_selectedTool),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    const SizedBox(height: 14),
-                    const SizedBox(height: 18),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _galleryButton(),
-                        _shutterButton(),
-                        _hintBadge(),
-                      ],
-                    ),
+                    if (_image == null) ...[
+                      const SizedBox(height: 40),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _galleryButton(),
+                          _shutterButton(),
+                          _hintBadge(),
+                        ],
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        'Confirm the plant part to focus before scanning.',
+                        style: GoogleFonts.inter(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _focusPartSelector(),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _isLoading ? null : _retakePhoto,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Retake'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(color: Colors.white38),
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _isLoading ? null : _cropImageToGuide,
+                              icon: const Icon(Icons.crop_rounded),
+                              label: const Text('Crop'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(color: Colors.white38),
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _isLoading ? null : _scanReviewedImage,
+                              icon: const Icon(Icons.search_rounded),
+                              label: const Text('Scan'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF1F7A3F),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (_error != null) ...[
                       const SizedBox(height: 12),
                       Text(
@@ -625,6 +946,89 @@ class _CameraScreenState extends State<CameraScreen>
     );
   }
 
+  Widget _cameraPlaceholder() {
+    final message = _error;
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF0B0D0F), Color(0xFF0F1A12)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 96, 28, 180),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_isSettingUpCamera || message == null) ...[
+                const CircularProgressIndicator(color: Color(0xFF48C774)),
+                const SizedBox(height: 18),
+                Text(
+                  'Opening camera...',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ] else ...[
+                const Icon(
+                  Icons.camera_alt_outlined,
+                  color: Colors.white70,
+                  size: 38,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _setupCamera,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Try Again'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white54),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _pickFromGallery,
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('Gallery'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1F7A3F),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    if (message.toLowerCase().contains('settings'))
+                      TextButton(
+                        onPressed: _isLoading ? null : openAppSettings,
+                        child: const Text('Open Settings'),
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _topIconButton(IconData icon, VoidCallback onPressed) {
     return Container(
       decoration: BoxDecoration(
@@ -656,86 +1060,17 @@ class _CameraScreenState extends State<CameraScreen>
     );
   }
 
-  Widget _toolRail({
-    required String label,
-    required List<CameraToolDefinition> tools,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            color: Colors.white54,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 42,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemBuilder: (context, index) => _toolChip(tools[index]),
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemCount: tools.length,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _toolChip(CameraToolDefinition tool) {
-    final isSelected = tool.id == _selectedTool.id;
-    final fillColor = isSelected ? tool.accentColor : const Color(0xFF1A1F1C);
-    final borderColor = isSelected ? Colors.transparent : const Color(0xFF2D3A33);
-    final textColor = isSelected ? Colors.white : Colors.white70;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: _isLoading ? null : () => _selectTool(tool),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: fillColor,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: borderColor),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(tool.icon, size: 16, color: textColor),
-              const SizedBox(width: 6),
-              Text(
-                tool.title,
-                style: GoogleFonts.inter(
-                  color: textColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _supportBadge(CameraToolDefinition tool) {
+  Widget _accessBadge(CameraToolDefinition tool) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: tool.supportTint,
+        color: tool.accessTint,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        tool.supportBadgeLabel,
+        tool.accessBadgeLabel,
         style: GoogleFonts.inter(
-          color: tool.supportColor,
+          color: tool.accessColor,
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
@@ -811,6 +1146,318 @@ class _CameraScreenState extends State<CameraScreen>
       child: Icon(
         _selectedTool.isRunnable ? Icons.info_outline : Icons.block_outlined,
         color: Colors.white70,
+      ),
+    );
+  }
+
+  Widget _focusPartSelector() {
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _focusParts.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final part = _focusParts[index];
+          final selected = part.organ == _selectedFocus;
+          return ChoiceChip(
+            selected: selected,
+            onSelected: (_) => setState(() => _selectedFocus = part.organ),
+            avatar: Icon(
+              part.icon,
+              size: 17,
+              color: selected ? Colors.white : Colors.white70,
+            ),
+            label: Text(part.label),
+            labelStyle: GoogleFonts.inter(
+              color: selected ? Colors.white : Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+            selectedColor: const Color(0xFF1F7A3F),
+            backgroundColor: const Color(0xFF1A1F1C),
+            side: BorderSide(
+              color: selected ? const Color(0xFF56D889) : const Color(0xFF2D3A33),
+            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FocusPart {
+  const _FocusPart(this.organ, this.label, this.icon);
+
+  final String organ;
+  final String label;
+  final IconData icon;
+}
+
+class _CropImageScreen extends StatefulWidget {
+  const _CropImageScreen({required this.imageFile});
+
+  final File imageFile;
+
+  @override
+  State<_CropImageScreen> createState() => _CropImageScreenState();
+}
+
+class _CropImageScreenState extends State<_CropImageScreen> {
+  final TransformationController _controller = TransformationController();
+  Future<ui.Image>? _imageFuture;
+  bool _initialized = false;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageFuture = _decodeImage();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<ui.Image> _decodeImage() async {
+    final bytes = await widget.imageFile.readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    return frame.image;
+  }
+
+  void _setInitialTransform({
+    required double cropSide,
+    required double displayWidth,
+    required double displayHeight,
+  }) {
+    if (_initialized) {
+      return;
+    }
+    _initialized = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _controller.value = Matrix4.identity()
+        ..translate(
+          (cropSide - displayWidth) / 2,
+          (cropSide - displayHeight) / 2,
+        );
+    });
+  }
+
+  Future<void> _applyCrop({
+    required ui.Image image,
+    required double cropSide,
+    required double displayScale,
+  }) async {
+    if (_isSaving) {
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final inverse = Matrix4.inverted(_controller.value);
+      final topLeft = MatrixUtils.transformPoint(inverse, Offset.zero);
+      final bottomRight = MatrixUtils.transformPoint(
+        inverse,
+        Offset(cropSide, cropSide),
+      );
+      final childRect = Rect.fromPoints(topLeft, bottomRight);
+      final sourceRect = Rect.fromLTRB(
+        childRect.left / displayScale,
+        childRect.top / displayScale,
+        childRect.right / displayScale,
+        childRect.bottom / displayScale,
+      ).intersect(
+        Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      );
+
+      if (sourceRect.width < 8 || sourceRect.height < 8) {
+        throw StateError('Crop area is too small.');
+      }
+
+      final cropped = await _CameraScreenState._writeCroppedImage(
+        originalFile: widget.imageFile,
+        sourceRect: sourceRect,
+      );
+
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop(cropped);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isSaving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Adjust the crop area and try again.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0D0F),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0B0D0F),
+        foregroundColor: Colors.white,
+        title: Text(
+          'Crop scan area',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w800),
+        ),
+      ),
+      body: FutureBuilder<ui.Image>(
+        future: _imageFuture,
+        builder: (context, snapshot) {
+          final image = snapshot.data;
+          if (image == null) {
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFF48C774)),
+            );
+          }
+
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final cropSide = math.min(
+                constraints.maxWidth - 32,
+                constraints.maxHeight - 170,
+              ).clamp(220.0, 420.0);
+              final displayScale = math.max(
+                cropSide / image.width,
+                cropSide / image.height,
+              );
+              final displayWidth = image.width * displayScale;
+              final displayHeight = image.height * displayScale;
+              _setInitialTransform(
+                cropSide: cropSide,
+                displayWidth: displayWidth,
+                displayHeight: displayHeight,
+              );
+
+              return SafeArea(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 18),
+                    Center(
+                      child: Container(
+                        width: cropSide,
+                        height: cropSide,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            InteractiveViewer(
+                              transformationController: _controller,
+                              constrained: false,
+                              minScale: 1,
+                              maxScale: 5,
+                              boundaryMargin: EdgeInsets.all(cropSide),
+                              child: SizedBox(
+                                width: displayWidth,
+                                height: displayHeight,
+                                child: Image.file(
+                                  widget.imageFile,
+                                  fit: BoxFit.fill,
+                                ),
+                              ),
+                            ),
+                            IgnorePointer(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: const Color(0xFF48C774),
+                                    width: 3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        'Pinch or drag until the leaf, flower, fruit, bark, or sick area fills the box.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(color: Colors.white38),
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                              ),
+                              child: const Text('Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _isSaving
+                                  ? null
+                                  : () => _applyCrop(
+                                        image: image,
+                                        cropSide: cropSide,
+                                        displayScale: displayScale,
+                                      ),
+                              icon: _isSaving
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.check_rounded),
+                              label: Text(_isSaving ? 'Saving...' : 'Apply Crop'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF1F7A3F),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

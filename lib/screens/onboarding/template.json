@@ -1,0 +1,120 @@
+{
+  "conditions": [],
+  "parameters": {
+    "maintenance_mode": {
+      "defaultValue": { "value": "false" },
+      "valueType": "BOOLEAN"
+    },
+    "maintenance_message": {
+      "defaultValue": { "value": "We are tuning LeafSnap right now. Please check back shortly." },
+      "valueType": "STRING"
+    },
+    "force_update_min_build": {
+      "defaultValue": { "value": "1" },
+      "valueType": "NUMBER"
+    },
+    "force_update_url": {
+      "defaultValue": { "value": "https://play.google.com/store/apps/details?id=com.leafsnap.ai" },
+      "valueType": "STRING"
+    },
+    "app_banner_enabled": {
+      "defaultValue": { "value": "false" },
+      "valueType": "BOOLEAN"
+    },
+    "app_banner_message": {
+      "defaultValue": { "value": "New plant packs are now available." },
+      "valueType": "STRING"
+    },
+    "app_banner_tone": {
+      "defaultValue": { "value": "info" },
+      "valueType": "STRING"
+    },
+    "home_banner_enabled": {
+      "defaultValue": { "value": "false" },
+      "valueType": "BOOLEAN"
+    },
+    "home_banner_message": {
+      "defaultValue": { "value": "Tip: Scan leaves in natural light for the best matches." },
+      "valueType": "STRING"
+    },
+    "screen_banners": {
+      "defaultValue": {
+        "value": "{\"home\":{\"enabled\":false,\"message\":\"Tip: Scan leaves in natural light for the best matches.\",\"tone\":\"success\"},\"diagnose\":{\"enabled\":false,\"message\":\"\",\"tone\":\"info\"},\"my_plants\":{\"enabled\":false,\"message\":\"\",\"tone\":\"info\"},\"more\":{\"enabled\":false,\"message\":\"\",\"tone\":\"info\"},\"settings\":{\"enabled\":false,\"message\":\"\",\"tone\":\"info\"},\"plant_result\":{\"enabled\":false,\"message\":\"\",\"tone\":\"info\"}}"
+      },
+      "valueType": "JSON"
+    },
+    "screen_theme_colors": {
+      "defaultValue": {
+        "value": "{\"home\":{\"background\":\"#F6FBF4\",\"primary\":\"#2F7D32\"},\"diagnose\":{\"background\":\"#F6FBF4\",\"primary\":\"#2F7D32\"},\"my_plants\":{\"background\":\"#F6FBF4\",\"primary\":\"#2F7D32\"},\"more\":{\"background\":\"#F6FBF4\",\"primary\":\"#2F7D32\"},\"settings\":{\"background\":\"#F6FBF4\",\"primary\":\"#2F7D32\"},\"plant_result\":{\"background\":\"#F6FBF4\",\"primary\":\"#2F7D32\"}}"
+      },
+      "valueType": "JSON"
+    },
+    "privacy_policy_url": {
+      "defaultValue": { "value": "https://leafsnap.app/privacy" },
+      "valueType": "STRING"
+    },
+    "terms_of_use_url": {
+      "defaultValue": { "value": "https://leafsnap.app/terms" },
+      "valueType": "STRING"
+    },
+    "help_url": {
+      "defaultValue": { "value": "https://leafsnap.app/help" },
+      "valueType": "STRING"
+    },
+    "support_email": {
+      "defaultValue": { "value": "support@leafsnap.app" },
+      "valueType": "STRING"
+    },
+    "support_subject": {
+      "defaultValue": { "value": "LeafSnap Support Request" },
+      "valueType": "STRING"
+    },
+    "support_body": {
+      "defaultValue": { "value": "Describe your issue here:\n\n" },
+      "valueType": "STRING"
+    },
+    "ios_store_url": {
+      "defaultValue": { "value": "https://apps.apple.com/app/leafsnap/id123456789" },
+      "valueType": "STRING"
+    },
+    "android_store_url": {
+      "defaultValue": { "value": "https://play.google.com/store/apps/details?id=com.leafsnap.ai" },
+      "valueType": "STRING"
+    },
+    "share_url": {
+      "defaultValue": { "value": "https://play.google.com/store/apps/details?id=com.leafsnap.ai" },
+      "valueType": "STRING"
+    },
+    "android_monthly_product_id": {
+      "defaultValue": { "value": "leafsnap_premium_monthly" },
+      "valueType": "STRING"
+    },
+    "android_yearly_product_id": {
+      "defaultValue": { "value": "leafsnap_premium_yearly" },
+      "valueType": "STRING"
+    },
+    "qa_scan_reset_enabled": {
+      "defaultValue": { "value": "false" },
+      "valueType": "BOOLEAN"
+    },
+    "backend_base_url": {
+      "defaultValue": { "value": "https://leafsnap-api.cloubridge.com" },
+      "valueType": "STRING"
+    },
+    "feature_camera_enabled": {
+      "defaultValue": { "value": "true" },
+      "valueType": "BOOLEAN"
+    },
+    "feature_diagnose_enabled": {
+      "defaultValue": { "value": "true" },
+      "valueType": "BOOLEAN"
+    },
+    "onboarding_copy": {
+      "defaultValue": {
+        "value": "{\"screen1_title\":\"The magic of nature\\nat your fingertips\",\"screen1_subtitle\":\"Identify any plant instantly\\nwith 99.9% accuracy\",\"screen1_cta\":\"Continue\",\"screen1_terms\":\"By tapping Continue, you agree to our Terms of Use and confirm you have read our Privacy Policy\",\"scene1_eyebrow\":\"Discover\",\"scene1_title\":\"Every leaf tells\\na story\",\"scene1_subtitle\":\"Point your camera and unlock the secrets of thousands of plants.\",\"scene2_eyebrow\":\"Learn\",\"scene2_title\":\"From curious\\nto expert\",\"scene2_subtitle\":\"Identify trees, flowers, succulents, and more with confidence.\",\"scene3_eyebrow\":\"Nurture\",\"scene3_title\":\"Give every plant\\nthe care it needs\",\"scene3_subtitle\":\"Personalized watering, light, and care advice for a thriving garden.\"}"
+      },
+      "valueType": "JSON"
+    }
+  },
+  "parameterGroups": {}
+}

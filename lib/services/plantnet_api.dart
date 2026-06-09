@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+
+import 'api_error.dart';
+import 'remote_config_service.dart';
 
 class PlantNetImageReference {
   const PlantNetImageReference({
@@ -132,18 +136,35 @@ class PlantNetApi {
   static const String _identifyBaseUrl = 'https://my-api.plantnet.org/v2/identify';
   static const String _diseasesBaseUrl =
       'https://my-api.plantnet.org/v2/diseases/identify';
+  static const String _defaultBackendBaseUrl =
+      'https://leafsnap-api.cloubridge.com';
 
   Future<Map<String, dynamic>> identify({
     required List<File> images,
     required List<String> organs,
     String project = 'all',
     String? language,
+    bool includeRelatedImages = false,
   }) async {
+    final backendBaseUrl = _backendBaseUrl();
+    if (backendBaseUrl != null) {
+      return _submitBackendIdentifyRequest(
+        baseUrl: backendBaseUrl,
+        images: images,
+        organs: organs,
+        project: project,
+        language: language,
+        includeRelatedImages: includeRelatedImages,
+      );
+    }
+
     return _submitMultipartRequest(
       uri: Uri.parse('$_identifyBaseUrl/$project').replace(
         queryParameters: <String, String>{
           'api-key': _requireApiKey(),
-          'include-related-images': 'true',
+          'include-related-images': includeRelatedImages.toString(),
+          'no-reject': 'true',
+          'nb-results': '3',
           if (language != null) 'lang': language,
         },
       ),
@@ -156,12 +177,14 @@ class PlantNetApi {
     required List<File> images,
     required List<String> organs,
     String? language,
+    bool includeRelatedImages = false,
   }) async {
     return _submitMultipartRequest(
       uri: Uri.parse(_diseasesBaseUrl).replace(
         queryParameters: <String, String>{
           'api-key': _requireApiKey(),
-          'include-related-images': 'true',
+          'include-related-images': includeRelatedImages.toString(),
+          'nb-results': '3',
           if (language != null) 'lang': language,
         },
       ),
@@ -192,6 +215,80 @@ class PlantNetApi {
     return apiKey;
   }
 
+  String? _backendBaseUrl() {
+    final raw = RemoteConfigService.instance
+        .getString(RemoteConfigKeys.backendBaseUrl)
+        .trim();
+    if (raw.isEmpty) {
+      return _defaultBackendBaseUrl;
+    }
+    final normalized = raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
+    final host = Uri.tryParse(normalized)?.host.toLowerCase();
+    if (host != 'leafsnap-api.cloubridge.com') {
+      return _defaultBackendBaseUrl;
+    }
+    return normalized;
+  }
+
+  Future<Map<String, dynamic>> _submitBackendIdentifyRequest({
+    required String baseUrl,
+    required List<File> images,
+    required List<String> organs,
+    required String project,
+    required String? language,
+    required bool includeRelatedImages,
+  }) async {
+    if (images.isEmpty || images.length > 5) {
+      throw ArgumentError('images must be between 1 and 5 items');
+    }
+    if (images.length != organs.length) {
+      throw ArgumentError('images and organs must have the same length');
+    }
+
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/v1/identify/plant'),
+    );
+    request.fields['project'] = project;
+    request.fields['includeRelatedImages'] = includeRelatedImages.toString();
+    if (language != null) {
+      request.fields['language'] = language;
+    }
+
+    for (var i = 0; i < images.length; i++) {
+      request.files.add(http.MultipartFile.fromString('organs', organs[i]));
+      request.files.add(await http.MultipartFile.fromPath('images', images[i].path));
+    }
+
+    try {
+      final streamedResponse = await request.send().timeout(
+            const Duration(seconds: 20),
+          );
+      final response = await http.Response.fromStream(streamedResponse).timeout(
+        const Duration(seconds: 10),
+      );
+      if (response.statusCode == 429) {
+        throw ApiRateLimitException('Request limit reached.');
+      }
+      if (response.statusCode == 503) {
+        throw const ApiUnavailableException('Identification service unavailable.');
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException(
+          'Identification gateway error: ${response.statusCode} ${response.body}',
+        );
+      }
+      final jsonBody = jsonDecode(response.body);
+      if (jsonBody is Map<String, dynamic>) {
+        return jsonBody;
+      }
+    } on TimeoutException {
+      throw const HttpException('Identification service timed out.');
+    }
+
+    throw const FormatException('Unexpected identification response');
+  }
+
   Future<Map<String, dynamic>> _submitMultipartRequest({
     required Uri uri,
     required List<File> images,
@@ -211,16 +308,32 @@ class PlantNetApi {
       request.files.add(await http.MultipartFile.fromPath('images', images[i].path));
     }
 
-    final response = await http.Response.fromStream(await request.send());
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HttpException('PlantNet API error: ${response.statusCode} ${response.body}');
-    }
+    try {
+      final streamedResponse = await request.send().timeout(
+            const Duration(seconds: 12),
+          );
 
-    final jsonBody = jsonDecode(response.body);
-    if (jsonBody is Map<String, dynamic>) {
-      return jsonBody;
+      final response = await http.Response.fromStream(streamedResponse).timeout(
+        const Duration(seconds: 10),
+      );
+      if (response.statusCode == 429) {
+        throw ApiRateLimitException('Request limit reached.');
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException(
+          'Identification service error: ${response.statusCode} ${response.body}',
+        );
+      }
+
+      final jsonBody = jsonDecode(response.body);
+      if (jsonBody is Map<String, dynamic>) {
+        return jsonBody;
+      }
+    } on TimeoutException {
+      throw const HttpException('Identification service timed out.');
     }
 
     throw const FormatException('Unexpected PlantNet response');
   }
+
 }
