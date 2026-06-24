@@ -10,7 +10,7 @@ import '../services/posthog_service.dart';
 import '../services/remote_config_service.dart';
 
 class AppBottomNav extends StatefulWidget {
-  const AppBottomNav({Key? key}) : super(key: key);
+  const AppBottomNav({super.key});
 
   @override
   State<AppBottomNav> createState() => _AppBottomNavState();
@@ -21,14 +21,13 @@ class _AppBottomNavState extends State<AppBottomNav> {
 
   Widget get _homeScreen => const HomeScreen();
   Widget get _diagnoseScreen => const DiagnoseScreen();
-  Widget get _cameraScreen => const CameraScreen();
   Widget get _plantsScreen => const MyPlantsScreen();
   Widget get _moreScreen => const MoreScreen();
 
   List<Widget> get _screens => [
         _homeScreen,
         _diagnoseScreen,
-        _cameraScreen,
+        const SizedBox.shrink(),
         _plantsScreen,
         _moreScreen,
       ];

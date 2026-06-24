@@ -1,13 +1,21 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
+  static const String _webClientId =
+      '834121133893-rgpd5c7cv4htn5io7q4k6siltg15fo1r.apps.googleusercontent.com';
+
   final FirebaseAuth _auth;
   final GoogleSignIn _googleSignIn;
 
   AuthService({FirebaseAuth? auth, GoogleSignIn? googleSignIn})
       : _auth = auth ?? FirebaseAuth.instance,
-        _googleSignIn = googleSignIn ?? GoogleSignIn();
+        _googleSignIn = googleSignIn ??
+            GoogleSignIn(
+              serverClientId: _webClientId,
+              scopes: const <String>['email', 'profile'],
+            );
 
   // Stream of authentication state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -65,6 +73,8 @@ class AuthService {
       return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (e) {
       throw _handleAuthError(e);
+    } on PlatformException catch (e) {
+      throw _handleGoogleSignInError(e);
     }
   }
 
@@ -147,5 +157,22 @@ class AuthService {
       default:
         return 'Authentication error: ${e.message}';
     }
+  }
+
+  String _handleGoogleSignInError(PlatformException e) {
+    final details = e.details?.toString() ?? '';
+    final message = e.message ?? '';
+    final combined = '$message $details';
+
+    if (e.code == 'sign_in_canceled' || e.code == 'network_error') {
+      return 'Google sign-in could not complete. Please try again.';
+    }
+    if (e.code == 'sign_in_failed' && combined.contains('ApiException: 10')) {
+      return 'Google sign-in is not configured for this production build. Add the release or Play App Signing SHA-1 and SHA-256 fingerprints for com.leafsnap.ai in Firebase, then download the updated google-services.json.';
+    }
+    if (e.code == 'sign_in_failed') {
+      return 'Google sign-in failed. Please try again or use email sign-in.';
+    }
+    return 'Google sign-in could not complete. Please try again.';
   }
 }

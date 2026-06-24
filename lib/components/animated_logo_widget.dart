@@ -156,8 +156,10 @@ class _AnimatedLogoSplashScreenState extends State<AnimatedLogoSplashScreen>
     with TickerProviderStateMixin {
   late AnimationController _entranceController;
   late AnimationController _progressController;
+  late AnimationController _lottieController;
   late Animation<double> _logoScaleAnimation;
   late Animation<double> _contentOpacityAnimation;
+  int _lottiePlays = 0;
 
   @override
   void initState() {
@@ -172,6 +174,20 @@ class _AnimatedLogoSplashScreenState extends State<AnimatedLogoSplashScreen>
       vsync: this,
       duration: widget.displayDuration,
     )..forward();
+
+    _lottieController = AnimationController(vsync: this)
+      ..addStatusListener((status) {
+        if (status != AnimationStatus.completed) {
+          return;
+        }
+
+        _lottiePlays += 1;
+        if (_lottiePlays < 2) {
+          _lottieController
+            ..reset()
+            ..forward();
+        }
+      });
 
     _logoScaleAnimation = Tween<double>(begin: 0.96, end: 1).animate(
       CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic),
@@ -192,6 +208,7 @@ class _AnimatedLogoSplashScreenState extends State<AnimatedLogoSplashScreen>
   void dispose() {
     _entranceController.dispose();
     _progressController.dispose();
+    _lottieController.dispose();
     super.dispose();
   }
 
@@ -223,8 +240,14 @@ class _AnimatedLogoSplashScreenState extends State<AnimatedLogoSplashScreen>
                           height: 220,
                           child: Lottie.asset(
                             'assets/animations/logo_splash.json',
+                            controller: _lottieController,
                             fit: BoxFit.contain,
                             repeat: false,
+                            onLoaded: (composition) {
+                              _lottieController
+                                ..duration = composition.duration
+                                ..forward(from: 0);
+                            },
                           ),
                         ),
                       ),

@@ -11,9 +11,9 @@ import 'package:share_plus/share_plus.dart';
 import '../../../components/remote_config_ui.dart';
 import '../../../services/ambee_soil_api.dart';
 import '../../../services/api_error.dart';
+import '../../../services/location_permission_service.dart';
 import '../../../services/perenual_api.dart';
 import '../../../services/plantnet_api.dart';
-import '../../../services/plant_store.dart';
 import 'camera_screen.dart';
 import 'camera_tools.dart';
 
@@ -1912,10 +1912,8 @@ class _PlantResultScreenState extends State<PlantResultScreen> with SingleTicker
         throw StateError('Turn on location services to check local soil.');
       }
 
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
+      final permission =
+          await LocationPermissionService.checkAndRequestIfNeeded();
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         throw StateError('Allow location access to analyze soil for this plant.');

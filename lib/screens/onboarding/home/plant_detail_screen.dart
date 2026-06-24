@@ -11,6 +11,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../models/garden_plant.dart';
 import '../../../services/ambee_soil_api.dart';
 import '../../../services/api_error.dart';
+import '../../../services/location_permission_service.dart';
 import '../../../services/perenual_api.dart';
 import '../../../services/posthog_service.dart';
 
@@ -102,7 +103,6 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
       curve: Curves.easeOutCubic,
     );
     _loadDetails();
-    _loadSoilSnapshot();
     _chartController.forward();
   }
 
@@ -168,10 +168,8 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
         throw StateError('Enable location to analyze local soil.');
       }
 
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
+      final permission =
+          await LocationPermissionService.checkAndRequestIfNeeded();
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         throw StateError('Location permission is needed for soil analysis.');
@@ -276,7 +274,6 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
               tooltip: 'Refresh',
               onPressed: () {
                 _loadDetails();
-                _loadSoilSnapshot();
               },
               icon: const Icon(Icons.more_horiz_rounded),
             ),
@@ -1160,7 +1157,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
           else
             Text(
               _soilError ??
-                  'Live Ambee soil data will appear here when available for your location.',
+                  'Use your location to check live Ambee soil data when you need it.',
               style: GoogleFonts.inter(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -1168,6 +1165,34 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
                 height: 1.45,
               ),
             ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _isLoadingSoil ? null : _loadSoilSnapshot,
+              icon: _isLoadingSoil
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.location_searching_rounded),
+              label: Text(
+                _isLoadingSoil ? 'Checking soil...' : 'Analyze Local Soil',
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF23B28B),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

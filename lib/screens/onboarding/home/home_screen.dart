@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../components/remote_config_ui.dart';
 import '../../../services/api_error.dart';
 import '../../../services/inaturalist_api.dart';
+import '../../../services/location_permission_service.dart';
 import '../../../services/perenual_api.dart';
 import '../../../services/weather_service.dart';
 import 'plant_detail_screen.dart';
@@ -32,6 +33,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   ];
 
   static const Duration _cropCacheTtl = Duration(hours: 12);
+  static const Duration _locationTimeout = Duration(seconds: 8);
+  static const Duration _geocodeTimeout = Duration(seconds: 4);
 
   final PerenualApi _perenualApi = PerenualApi();
   final INaturalistApi _inatApi = INaturalistApi();
@@ -97,7 +100,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _animationController.forward();
 
     _loadCachedCrops(allowStale: true, town: _city);
-    _loadLocation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadLocation();
+      }
+    });
     _loadWeedWatch();
   }
 
@@ -109,47 +116,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Future<void> _loadLocation() async {
     try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled()
+          .timeout(const Duration(seconds: 3));
       if (!serviceEnabled) {
-        if (!mounted) return;
-        setState(() {
-          _locationLabel = 'Enable location';
-          _city = 'your area';
-          _country = '';
-          _weather = null;
-        });
-        // Still load cached crops and fetch fresh data for default location
-        await _loadCachedCrops(allowStale: true, town: _city);
-        _loadCropCollections();
+        await _useDefaultLocationData(label: 'Enable location');
         return;
       }
 
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
+      final permission =
+          await LocationPermissionService.checkAndRequestIfNeeded();
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        if (!mounted) return;
-        setState(() {
-          _locationLabel = 'Location off';
-          _city = 'your area';
-          _country = '';
-          _weather = null;
-        });
-        // Still load cached crops and fetch fresh data for default location
-        await _loadCachedCrops(allowStale: true, town: _city);
-        _loadCropCollections();
+        await _useDefaultLocationData(
+          label: permission == LocationPermission.deniedForever
+              ? 'Enable in settings'
+              : 'Location off',
+        );
         return;
       }
 
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      final position = await _currentOrLastKnownPosition();
+      if (position == null) {
+        await _useDefaultLocationData(label: 'Location unavailable');
+        return;
+      }
+
       final placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
-      );
+      ).timeout(_geocodeTimeout, onTimeout: () => []);
       final place = placemarks.isNotEmpty ? placemarks.first : null;
       final city = place?.locality?.isNotEmpty == true
           ? place!.locality
@@ -177,14 +172,37 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _loadWeather(latitude: position.latitude, longitude: position.longitude);
       _loadCropCollections();
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _locationLabel = 'Location unavailable';
-        _city = 'your area';
-        _country = '';
-        _weather = null;
-      });
+      await _useDefaultLocationData(label: 'Location unavailable');
     }
+  }
+
+  Future<Position?> _currentOrLastKnownPosition() async {
+    try {
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: _locationTimeout,
+      );
+    } catch (_) {
+      try {
+        return await Geolocator.getLastKnownPosition();
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  Future<void> _useDefaultLocationData({required String label}) async {
+    if (!mounted) return;
+    setState(() {
+      _locationLabel = label;
+      _city = 'your area';
+      _country = '';
+      _weather = null;
+      _nearbyTowns = _nearbyTownsForLocation(city: _city, country: _country);
+      _selectedTown = _nearbyTowns.first;
+    });
+    await _loadCachedCrops(allowStale: true, town: _city);
+    _loadCropCollections();
   }
 
   Future<void> _loadWeather({
@@ -1019,6 +1037,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 16),
             ],
+            if (_hasLocationIssue) ...[
+              _buildLocationIssueCard(),
+              const SizedBox(height: 16),
+            ],
             if (_isApiLimitReached) ...[
               Container(
                 padding: const EdgeInsets.all(14),
@@ -1166,6 +1188,67 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         ),
       ],
+    );
+  }
+
+  bool get _hasLocationIssue =>
+      _locationLabel == 'Enable location' ||
+      _locationLabel == 'Enable in settings' ||
+      _locationLabel == 'Location off' ||
+      _locationLabel == 'Location unavailable';
+
+  Widget _buildLocationIssueCard() {
+    final needsAppSettings = _locationLabel == 'Enable in settings';
+    final message = needsAppSettings
+        ? 'Location was denied. Enable it in app settings to show crops near you.'
+        : 'Allow location to show crops and weather near you.';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.location_off_outlined,
+            color: Color(0xFF228B22),
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF516052),
+                height: 1.35,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          TextButton(
+            onPressed: () {
+              if (needsAppSettings) {
+                Geolocator.openAppSettings();
+              } else {
+                Geolocator.openLocationSettings();
+              }
+            },
+            child: Text(
+              'Open',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF228B22),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
