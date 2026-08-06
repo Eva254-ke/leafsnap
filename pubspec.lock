@@ -185,6 +185,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.9"
+  equatable:
+    dependency: transitive
+    description:
+      name: equatable
+      sha256: "3e0141505477fd8ad55d6eb4e7776d3fe8430be8e497ccb1521370c3f21a3e2b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.8"
   fake_async:
     dependency: transitive
     description:
@@ -362,10 +370,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_dotenv
-      sha256: b7c7be5cd9f6ef7a78429cabd2774d3c4af50e79cb2b7593e3d5d763ef95c61b
+      sha256: d41da11fb497314fbf89811ec30af02d1d898b47980a129f0a8c0a1720460ba2
       url: "https://pub.dev"
     source: hosted
-    version: "5.2.1"
+    version: "6.0.1"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -576,6 +584,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  image:
+    dependency: "direct main"
+    description:
+      name: image
+      sha256: f9881ff4998044947ec38d098bc7c8316ae1186fa786eddffdb867b9bc94dfce
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.8.0"
   image_picker:
     dependency: "direct main"
     description:
@@ -640,38 +656,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.2"
-  in_app_purchase:
-    dependency: "direct main"
-    description:
-      name: in_app_purchase
-      sha256: "5cddd7f463f3bddb1d37a72b95066e840d5822d66291331d7f8f05ce32c24b6c"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.3"
-  in_app_purchase_android:
-    dependency: transitive
-    description:
-      name: in_app_purchase_android
-      sha256: "634bee4734b17fe55f370f0ac07a22431a9666e0f3a870c6d20350856e8bbf71"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.0+10"
-  in_app_purchase_platform_interface:
-    dependency: transitive
-    description:
-      name: in_app_purchase_platform_interface
-      sha256: "1d353d38251da5b9fea6635c0ebfc6bb17a2d28d0e86ea5e083bf64244f1fb4c"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.4.0"
-  in_app_purchase_storekit:
-    dependency: transitive
-    description:
-      name: in_app_purchase_storekit
-      sha256: "1d512809edd9f12ff88fce4596a13a18134e2499013f4d6a8894b04699363c93"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.8+1"
   jni:
     dependency: transitive
     description:
@@ -688,14 +672,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.1"
-  json_annotation:
-    dependency: transitive
-    description:
-      name: json_annotation
-      sha256: cb09e7dac6210041fad964ed7fbee004f14258b4eca4040f72d1234062ace4c8
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.11.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -984,6 +960,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  purchases_flutter:
+    dependency: "direct main"
+    description:
+      name: purchases_flutter
+      sha256: "7e849e3a94011109c4b91e1be65871bdb0f6aa3d577aee0764fbdb69b3eb6181"
+      url: "https://pub.dev"
+    source: hosted
+    version: "10.3.0"
+  purchases_ui_flutter:
+    dependency: "direct main"
+    description:
+      name: purchases_ui_flutter
+      sha256: "7ec221d1511e57941fc56a34f13026fd973f3d755d29b962c99f3c551760ac74"
+      url: "https://pub.dev"
+    source: hosted
+    version: "10.3.0"
+  quiver:
+    dependency: transitive
+    description:
+      name: quiver
+      sha256: ea0b925899e64ecdfbf9c7becb60d5b50e706ade44a85b2363be2a22d88117d2
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.2"
   record_use:
     dependency: transitive
     description:
@@ -1181,6 +1181,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.7"
+  tflite_flutter:
+    dependency: "direct main"
+    description:
+      name: tflite_flutter
+      sha256: "0bba9040d8decda0960d7abf8eabf32243bf092bc7d0084e8e19681866b0bdbe"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.12.1"
   typed_data:
     dependency: transitive
     description:

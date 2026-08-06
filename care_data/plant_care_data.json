@@ -1,0 +1,129 @@
+[
+  {
+    "species": "Tomato",
+    "care": [
+      {"category": "watering", "general": "1-1.5 inches per week", "seasons": {"spring": "1 inch/week", "summer": "1.5-2 inches/week, deep morning soak", "autumn": "reduce as harvest finishes", "winter": "N/A (outdoor)"}},
+      {"category": "sunlight", "general": "6-8 hours direct sun", "seasons": {"spring": "full sun", "summer": "full sun, afternoon shade in extreme heat", "autumn": "full sun", "winter": "N/A"}},
+      {"category": "soil", "general": "Well-draining loam, pH 6.0-6.8", "seasons": {"spring": "amend with compost", "summer": "mulch to retain moisture", "autumn": "add cover crop residue", "winter": "allow to rest"}},
+      {"category": "fertilizer", "general": "Balanced NPK", "seasons": {"spring": "high nitrogen at planting", "summer": "high phosphorus/potassium at flowering", "autumn": "none", "winter": "none"}},
+      {"category": "pruning", "general": "Remove suckers and lower leaves", "seasons": {"spring": "prune lower leaves", "summer": "top plant late summer", "autumn": "remove diseased foliage", "winter": "clear dead matter"}}
+    ]
+  },
+  {
+    "species": "Potato",
+    "care": [
+      {"category": "watering", "general": "1-2 inches per week", "seasons": {"spring": "keep evenly moist", "summer": "critical during tuber bulking", "autumn": "stop 2 weeks before harvest", "winter": "N/A"}},
+      {"category": "sunlight", "general": "Full sun (6-8 hours)", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "N/A"}},
+      {"category": "soil", "general": "Loose sandy loam, pH 5.0-6.0", "seasons": {"spring": "hill soil around stems", "summer": "keep tubers covered", "autumn": "harvest in loose soil", "winter": "N/A"}},
+      {"category": "fertilizer", "general": "Low N, high P/K", "seasons": {"spring": "mix into soil at planting", "summer": "side-dress if needed", "autumn": "none", "winter": "none"}}
+    ]
+  },
+  {
+    "species": "Pepper",
+    "care": [
+      {"category": "watering", "general": "1-1.5 inches per week", "seasons": {"spring": "1 inch/week", "summer": "1.5 inches/week, avoid wetting leaves", "autumn": "reduce", "winter": "N/A"}},
+      {"category": "sunlight", "general": "Full sun (6-8 hours)", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "N/A"}},
+      {"category": "soil", "general": "Well-draining loam, pH 6.0-6.8", "seasons": {"spring": "warm soil before planting", "summer": "mulch heavily", "autumn": "clear debris", "winter": "N/A"}},
+      {"category": "fertilizer", "general": "Balanced vegetable fertilizer", "seasons": {"spring": "at transplant", "summer": "when first fruits set", "autumn": "none", "winter": "none"}}
+    ]
+  },
+  {
+    "species": "Apple",
+    "care": [
+      {"category": "watering", "general": "1 inch per week for young trees", "seasons": {"spring": "deep water weekly", "summer": "increase during fruit set", "autumn": "reduce for dormancy", "winter": "minimal"}},
+      {"category": "sunlight", "general": "Full sun (6-8 hours)", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "dormant"}},
+      {"category": "soil", "general": "Deep loam, pH 6.0-7.0", "seasons": {"spring": "apply mulch ring", "summer": "check drainage", "autumn": "top dress compost", "winter": "protect trunk"}},
+      {"category": "pruning", "general": "Open center or central leader", "seasons": {"spring": "minimal", "summer": "remove water sprouts", "autumn": "none", "winter": "major structural pruning"}}
+    ]
+  },
+  {
+    "species": "Grape",
+    "care": [
+      {"category": "watering", "general": "Deep, infrequent watering", "seasons": {"spring": "1 inch/week as shoots grow", "summer": "reduce to encourage deep roots", "autumn": "stop after harvest", "winter": "dormant"}},
+      {"category": "sunlight", "general": "Full sun", "seasons": {"spring": "full sun", "summer": "full sun, canopy covers fruit", "autumn": "full sun", "winter": "dormant"}},
+      {"category": "soil", "general": "Well-draining, pH 5.5-6.5", "seasons": {"spring": "ensure no standing water", "summer": "weed-free zone", "autumn": "add lime if needed", "winter": "dormant"}},
+      {"category": "pruning", "general": "Cane or spur pruning", "seasons": {"spring": "shoot thinning", "summer": "leaf pulling", "autumn": "none", "winter": "heavy dormant pruning"}}
+    ]
+  },
+  {
+    "species": "Corn",
+    "care": [
+      {"category": "watering", "general": "1-1.5 inches per week", "seasons": {"spring": "keep moist for germination", "summer": "critical at silking/tasseling", "autumn": "stop before harvest", "winter": "N/A"}},
+      {"category": "sunlight", "general": "Full sun", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "N/A"}},
+      {"category": "soil", "general": "Rich, well-draining loam, pH 5.8-7.0", "seasons": {"spring": "heavy nitrogen application", "summer": "side-dress nitrogen", "autumn": "plant cover crop", "winter": "N/A"}},
+      {"category": "fertilizer", "general": "High nitrogen", "seasons": {"spring": "at planting and 6-inch height", "summer": "at tasseling", "autumn": "none", "winter": "none"}}
+    ]
+  },
+  {
+    "species": "Strawberry",
+    "care": [
+      {"category": "watering", "general": "1-1.5 inches per week", "seasons": {"spring": "1 inch/week", "summer": "1.5 inches/week during fruiting", "autumn": "reduce", "winter": "protect from freeze"}},
+      {"category": "sunlight", "general": "Full sun (6-8 hours)", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "dormant"}},
+      {"category": "soil", "general": "Sandy loam, pH 5.5-6.5", "seasons": {"spring": "add compost", "summer": "mulch with straw", "autumn": "apply mulch for winter", "winter": "keep mulched"}},
+      {"category": "fertilizer", "general": "Balanced 10-10-10", "seasons": {"spring": "at bloom", "summer": "after harvest (renovation)", "autumn": "none", "winter": "none"}}
+    ]
+  },
+  {
+    "species": "Cherry",
+    "care": [
+      {"category": "watering", "general": "Deep watering", "seasons": {"spring": "1 inch/week", "summer": "increase during fruit swell", "autumn": "deep soak before winter", "winter": "dormant"}},
+      {"category": "sunlight", "general": "Full sun", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "dormant"}},
+      {"category": "soil", "general": "Well-draining loam, pH 6.0-6.5", "seasons": {"spring": "mulch base", "summer": "keep base weed-free", "autumn": "do not mulch against trunk", "winter": "protect from frost"}},
+      {"category": "pruning", "general": "Central leader", "seasons": {"spring": "thin fruit", "summer": "remove diseased wood", "autumn": "none", "winter": "minor structural pruning"}}
+    ]
+  },
+  {
+    "species": "Peach",
+    "care": [
+      {"category": "watering", "general": "Deep watering", "seasons": {"spring": "1 inch/week", "summer": "increase during fruit swell", "autumn": "deep soak before winter", "winter": "dormant"}},
+      {"category": "sunlight", "general": "Full sun", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "dormant"}},
+      {"category": "soil", "general": "Well-draining loam, pH 6.0-6.5", "seasons": {"spring": "mulch base", "summer": "keep base weed-free", "autumn": "do not mulch against trunk", "winter": "protect from frost"}},
+      {"category": "pruning", "general": "Open vase shape", "seasons": {"spring": "thin fruit", "summer": "remove vigorous upright shoots", "autumn": "none", "winter": "prune to open center"}}
+    ]
+  },
+  {
+    "species": "Orange",
+    "care": [
+      {"category": "watering", "general": "Deep, infrequent watering", "seasons": {"spring": "1 inch/week", "summer": "1.5 inches/week", "autumn": "reduce", "winter": "deep soak monthly"}},
+      {"category": "sunlight", "general": "Full sun", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "full sun"}},
+      {"category": "soil", "general": "Sandy loam, pH 6.0-7.5", "seasons": {"spring": "ensure drainage", "summer": "mulch to retain moisture", "autumn": "check for salt buildup", "winter": "protect roots from cold"}},
+      {"category": "fertilizer", "general": "Citrus specific (high N, micronutrients)", "seasons": {"spring": "heavy feeding", "summer": "light feeding", "autumn": "stop feeding", "winter": "none"}}
+    ]
+  },
+  {
+    "species": "Blueberry",
+    "care": [
+      {"category": "watering", "general": "1-2 inches per week", "seasons": {"spring": "keep evenly moist", "summer": "critical during fruiting", "autumn": "reduce", "winter": "protect from drying winds"}},
+      {"category": "sunlight", "general": "Full sun", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "dormant"}},
+      {"category": "soil", "general": "Highly acidic organic soil, pH 4.5-5.5", "seasons": {"spring": "add pine needle mulch", "summer": "keep mulched", "autumn": "apply sulfur if pH rises", "winter": "heavy mulch"}},
+      {"category": "pruning", "general": "Remove dead/crossing branches", "seasons": {"spring": "minimal", "summer": "none", "autumn": "none", "winter": "prune out old canes"}}
+    ]
+  },
+  {
+    "species": "Raspberry",
+    "care": [
+      {"category": "watering", "general": "1-1.5 inches per week", "seasons": {"spring": "1 inch/week", "summer": "1.5 inches/week during fruiting", "autumn": "reduce", "winter": "minimal"}},
+      {"category": "sunlight", "general": "Full sun", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "dormant"}},
+      {"category": "soil", "general": "Rich, well-draining loam, pH 6.0-6.8", "seasons": {"spring": "add compost", "summer": "mulch heavily", "autumn": "clear old canes", "winter": "protect crowns"}},
+      {"category": "pruning", "general": "Remove fruited canes (floricanes)", "seasons": {"spring": "thin primocanes", "summer": "tip primocanes", "autumn": "cut dead floricanes", "winter": "tie remaining canes"}}
+    ]
+  },
+  {
+    "species": "Soybean",
+    "care": [
+      {"category": "watering", "general": "1-1.5 inches per week", "seasons": {"spring": "adequate for germination", "summer": "critical at flowering/pod fill", "autumn": "stop before harvest", "winter": "N/A"}},
+      {"category": "sunlight", "general": "Full sun", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "N/A"}},
+      {"category": "soil", "general": "Well-draining loam, pH 6.0-6.8", "seasons": {"spring": "inoculate seed", "summer": "ensure good drainage", "autumn": "leave residue for no-till", "winter": "N/A"}},
+      {"category": "fertilizer", "general": "Low N (fixes own), moderate P/K", "seasons": {"spring": "apply P/K at planting", "summer": "none", "autumn": "none", "winter": "none"}}
+    ]
+  },
+  {
+    "species": "Squash",
+    "care": [
+      {"category": "watering", "general": "1-1.5 inches per week", "seasons": {"spring": "1 inch/week", "summer": "1.5 inches/week, water at base only", "autumn": "reduce as harvest finishes", "winter": "N/A"}},
+      {"category": "sunlight", "general": "Full sun (6-8 hours)", "seasons": {"spring": "full sun", "summer": "full sun", "autumn": "full sun", "winter": "N/A"}},
+      {"category": "soil", "general": "Rich, well-draining loam, pH 6.0-6.8", "seasons": {"spring": "heavy compost amendment", "summer": "mulch to prevent soil splash", "autumn": "clear diseased vines", "winter": "N/A"}},
+      {"category": "fertilizer", "general": "Balanced vegetable fertilizer", "seasons": {"spring": "at planting", "summer": "when vines run", "autumn": "none", "winter": "none"}}
+    ]
+  }
+]

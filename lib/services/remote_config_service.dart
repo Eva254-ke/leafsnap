@@ -91,7 +91,7 @@ class RemoteConfigService {
   static const Map<String, Object> _defaults = {
     RemoteConfigKeys.maintenanceMode: false,
     RemoteConfigKeys.maintenanceMessage:
-        'We are tuning LeafSnap right now. Please check back shortly.',
+        'We are tuning Chlora right now. Please check back shortly.',
     RemoteConfigKeys.forceUpdateMinBuild: 1,
     RemoteConfigKeys.forceUpdateUrl:
         'https://play.google.com/store/apps/details?id=com.leafsnap.ai',
@@ -103,26 +103,27 @@ class RemoteConfigService {
         'Tip: Scan leaves in natural light for the best matches.',
     RemoteConfigKeys.screenBanners: '{}',
     RemoteConfigKeys.screenThemeColors: '{}',
-    RemoteConfigKeys.privacyPolicyUrl: 'https://leafsnap.app/privacy',
-    RemoteConfigKeys.termsOfUseUrl: 'https://leafsnap.app/terms',
-    RemoteConfigKeys.helpUrl: 'https://leafsnap.app/help',
-    RemoteConfigKeys.supportEmail: 'support@leafsnap.app',
-    RemoteConfigKeys.supportSubject: 'LeafSnap Support Request',
+    RemoteConfigKeys.privacyPolicyUrl: 'https://sites.google.com/view/leafsnapai/privacy-policy',
+    RemoteConfigKeys.termsOfUseUrl: 'https://sites.google.com/view/leafsnapai/terms-of-use',
+    RemoteConfigKeys.helpUrl: 'https://sites.google.com/view/leafsnapai/help',
+    RemoteConfigKeys.supportEmail: 'evanszachariah36@gmail.com',
+    RemoteConfigKeys.supportSubject: 'Chlora Support Request',
     RemoteConfigKeys.supportBody: 'Describe your issue here:\n\n',
     RemoteConfigKeys.iosStoreUrl:
-        'https://apps.apple.com/app/leafsnap/id123456789',
+        'https://apps.apple.com/app/leafsnap-ai/id123456789',
     RemoteConfigKeys.androidStoreUrl:
-        'https://play.google.com/store/apps/details?id=com.example.leafsnap_ai',
+        'https://play.google.com/store/apps/details?id=com.leafsnap.ai',
     RemoteConfigKeys.shareUrl:
-        'https://play.google.com/store/apps/details?id=com.example.leafsnap_ai',
+        'https://play.google.com/store/apps/details?id=com.leafsnap.ai',
     RemoteConfigKeys.androidMonthlyProductId: 'leafsnap_premium_monthly',
     RemoteConfigKeys.androidYearlyProductId: 'leafsnap_premium_yearly',
     RemoteConfigKeys.qaScanResetEnabled: false,
     RemoteConfigKeys.backendBaseUrl: 'https://leafsnap-api.cloubridge.com',
+    RemoteConfigKeys.iosStoreId: '123456789',
     RemoteConfigKeys.featureCameraEnabled: true,
     RemoteConfigKeys.featureDiagnoseEnabled: true,
     RemoteConfigKeys.onboardingCopy:
-        '{"screen1_title":"The magic of nature\\nat your fingertips","screen1_subtitle":"Identify any plant instantly\\nwith 99.9% accuracy","screen1_cta":"Continue","screen1_terms":"By tapping Continue, you agree to our Terms of Use\\nand Privacy Policy.","scene1_eyebrow":"Discover","scene1_title":"Every leaf tells\\na story","scene1_subtitle":"Point your camera and unlock the secrets of thousands of plants.","scene2_eyebrow":"Learn","scene2_title":"From curious\\nto expert","scene2_subtitle":"Identify trees, flowers, succulents, and more with confidence.","scene3_eyebrow":"Nurture","scene3_title":"Give every plant\\nthe care it needs","scene3_subtitle":"Personalized watering, light, and care advice for a thriving garden."}',
+        '{"screen1_title":"The magic of nature\\n\\nat your fingertips","screen1_subtitle":"Identify any plant instantly\\n\\nwith 99.9% accuracy","screen1_cta":"Continue","screen1_terms":"By tapping Continue, you agree to our Terms of Use\\n\\nand Privacy Policy.","scene1_eyebrow":"Discover","scene1_title":"Every leaf tells\\n\\na story","scene1_subtitle":"Point your camera and unlock the secrets of thousands of plants.","scene2_eyebrow":"Learn","scene2_title":"From curious\\n\\nto expert","scene2_subtitle":"Identify trees, flowers, succulents, and more with confidence.","scene3_eyebrow":"Nurture","scene3_title":"Give every plant\\n\\nthe care it needs","scene3_subtitle":"Personalized watering, light, and care advice for a thriving garden."}',
   };
 }
 
@@ -151,6 +152,7 @@ class RemoteConfigKeys {
   static const androidYearlyProductId = 'android_yearly_product_id';
   static const qaScanResetEnabled = 'qa_scan_reset_enabled';
   static const backendBaseUrl = 'backend_base_url';
+  static const iosStoreId = 'ios_store_id';
   static const featureCameraEnabled = 'feature_camera_enabled';
   static const featureDiagnoseEnabled = 'feature_diagnose_enabled';
   static const onboardingCopy = 'onboarding_copy';

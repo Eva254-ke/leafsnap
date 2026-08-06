@@ -235,7 +235,7 @@ class _OnboardingScreen2State extends State<OnboardingScreen2>
                         ),
                       ),
                     ),
-                    const LeafSnapLogo(),
+                    const ChloraLogo(),
                     SizedBox(
                       height: isTight
                           ? AppSpacing.md

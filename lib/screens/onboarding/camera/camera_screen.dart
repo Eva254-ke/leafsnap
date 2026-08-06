@@ -7,13 +7,14 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as image_lib;
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../services/api_error.dart';
 import '../../../services/billing_service.dart';
 import '../../../services/plantnet_api.dart';
 import '../../../services/scan_limit_service.dart';
-import '../../premium/premium_paywall_screen.dart';
+
 import 'camera_tools.dart';
 import 'plant_result_screen.dart';
 
@@ -520,16 +521,16 @@ class _CameraScreenState extends State<CameraScreen>
       return 'Plant identification is busy right now. Please try again later.';
     }
     if (error is ApiUnavailableException) {
-      return 'LeafSnap AI identification is temporarily unavailable. Please try again soon.';
+      return 'Chlora identification is temporarily unavailable. Please try again soon.';
     }
     if (isNetworkApiError(error)) {
-      return 'LeafSnap AI could not reach the identification service. Check your connection and try again.';
+      return 'Chlora could not reach the identification service. Check your connection and try again.';
     }
     if (error is HttpException) {
-      return 'LeafSnap AI had trouble identifying this photo. Try again with a clear leaf, flower, fruit, or bark shot.';
+      return 'Chlora had trouble identifying this photo. Try again with a clear leaf, flower, fruit, or bark shot.';
     }
     if (error is FormatException) {
-      return 'LeafSnap AI received an unexpected identification response. Please try again.';
+      return 'Chlora received an unexpected identification response. Please try again.';
     }
     return 'We could not complete the scan. Try again with a clearer plant photo.';
   }
@@ -545,17 +546,7 @@ class _CameraScreenState extends State<CameraScreen>
       return;
     }
 
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        settings: const RouteSettings(name: 'Premium Paywall'),
-        builder: (_) => PremiumPaywallScreen(
-          headline: headline,
-          subhead: subhead,
-          scansUsed: scansUsed,
-          scanLimit: ScanLimitService.scanLimit,
-        ),
-      ),
-    );
+    await BillingService.instance.presentPaywall();
 
     if (!mounted) {
       return;
@@ -1206,6 +1197,7 @@ class _CropImageScreen extends StatefulWidget {
 
 class _CropImageScreenState extends State<_CropImageScreen> {
   final TransformationController _controller = TransformationController();
+  late File _workingImageFile;
   Future<ui.Image>? _imageFuture;
   bool _initialized = false;
   bool _isSaving = false;
@@ -1213,6 +1205,7 @@ class _CropImageScreenState extends State<_CropImageScreen> {
   @override
   void initState() {
     super.initState();
+    _workingImageFile = widget.imageFile;
     _imageFuture = _decodeImage();
   }
 
@@ -1223,7 +1216,7 @@ class _CropImageScreenState extends State<_CropImageScreen> {
   }
 
   Future<ui.Image> _decodeImage() async {
-    final bytes = await widget.imageFile.readAsBytes();
+    final bytes = await _workingImageFile.readAsBytes();
     final codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
     return frame.image;
@@ -1250,6 +1243,35 @@ class _CropImageScreenState extends State<_CropImageScreen> {
     });
   }
 
+  Future<void> _rotateWorkingImage(int angle) async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    try {
+      final bytes = await _workingImageFile.readAsBytes();
+      final decoded = image_lib.decodeImage(bytes);
+      if (decoded == null) {
+        throw StateError('Could not decode image.');
+      }
+      final rotated = image_lib.copyRotate(decoded, angle: angle);
+      final path =
+          '${_workingImageFile.parent.path}${Platform.pathSeparator}leafsnap_rotate_${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = await File(path).writeAsBytes(image_lib.encodePng(rotated));
+      if (!mounted) return;
+      setState(() {
+        _workingImageFile = file;
+        _imageFuture = _decodeImage();
+        _initialized = false;
+        _isSaving = false;
+        _controller.value = Matrix4.identity();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not rotate this image.')),
+      );
+    }
+  }
   Future<void> _applyCrop({
     required ui.Image image,
     required double cropSide,
@@ -1285,7 +1307,7 @@ class _CropImageScreenState extends State<_CropImageScreen> {
       }
 
       final cropped = await _CameraScreenState._writeCroppedImage(
-        originalFile: widget.imageFile,
+        originalFile: _workingImageFile,
         sourceRect: sourceRect,
       );
 
@@ -1372,7 +1394,7 @@ class _CropImageScreenState extends State<_CropImageScreen> {
                                 width: displayWidth,
                                 height: displayHeight,
                                 child: Image.file(
-                                  widget.imageFile,
+                                  _workingImageFile,
                                   fit: BoxFit.fill,
                                 ),
                               ),
@@ -1394,8 +1416,39 @@ class _CropImageScreenState extends State<_CropImageScreen> {
                     const SizedBox(height: 18),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _isSaving ? null : () => _rotateWorkingImage(-90),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(color: Colors.white24),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              child: const Text('Rotate left'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _isSaving ? null : () => _rotateWorkingImage(90),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(color: Colors.white24),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              child: const Text('Rotate right'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Text(
-                        'Pinch or drag until the leaf, flower, fruit, bark, or sick area fills the box.',
+                        'Drag, pinch, or rotate until the exact plant part fills the box.',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
                           color: Colors.white70,
@@ -1462,3 +1515,5 @@ class _CropImageScreenState extends State<_CropImageScreen> {
     );
   }
 }
+
+

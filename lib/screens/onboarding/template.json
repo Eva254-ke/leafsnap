@@ -6,7 +6,7 @@
       "valueType": "BOOLEAN"
     },
     "maintenance_message": {
-      "defaultValue": { "value": "We are tuning LeafSnap right now. Please check back shortly." },
+      "defaultValue": { "value": "We are tuning Chlora right now. Please check back shortly." },
       "valueType": "STRING"
     },
     "force_update_min_build": {
@@ -66,7 +66,7 @@
       "valueType": "STRING"
     },
     "support_subject": {
-      "defaultValue": { "value": "LeafSnap Support Request" },
+      "defaultValue": { "value": "Chlora Support Request" },
       "valueType": "STRING"
     },
     "support_body": {

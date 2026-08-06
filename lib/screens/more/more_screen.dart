@@ -6,7 +6,6 @@ import '../../components/remote_config_ui.dart';
 import '../../services/billing_service.dart';
 import '../onboarding/camera/camera_screen.dart';
 import '../onboarding/camera/camera_tools.dart';
-import '../premium/premium_paywall_screen.dart';
 import '../settings/settings_screen.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -148,15 +147,7 @@ class _MoreScreenState extends State<MoreScreen> with SingleTickerProviderStateM
 
   Future<void> _openTool(CameraToolDefinition tool) async {
     if (tool.requiresPremium && !BillingService.instance.isPremium.value) {
-      await Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute(
-          settings: const RouteSettings(name: 'Premium Paywall'),
-          builder: (_) => PremiumPaywallScreen(
-            headline: '${tool.title} is premium',
-            subhead: 'Upgrade to unlock this feature.',
-          ),
-        ),
-      );
+      await BillingService.instance.presentPaywall();
       if (!mounted || !BillingService.instance.isPremium.value) {
         return;
       }

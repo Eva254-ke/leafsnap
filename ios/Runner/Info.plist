@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>LeafSnap AI</string>
+	<string>Chlora</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>LeafSnap AI</string>
+	<string>Chlora</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -46,8 +46,8 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>LeafSnap needs camera access to capture plant photos for identification.</string>
+	<string>Chlora needs camera access to capture plant photos for identification.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>LeafSnap uses your location to show local plant trends and weather.</string>
+	<string>Chlora uses your location to show local plant trends and weather.</string>
 </dict>
 </plist>

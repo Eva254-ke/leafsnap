@@ -22,6 +22,22 @@
           }
         },
         {
+          "client_id": "834121133893-bfme1m7vdp6bg6jhl9i3pkcr1rejpmll.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.leafsnap.ai",
+            "certificate_hash": "00380508d3674556f10bfeebddb81dbe2f3ec45b"
+          }
+        },
+        {
+          "client_id": "834121133893-tofscne7rb3npodsvv021un3h7imcq4n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.leafsnap.ai",
+            "certificate_hash": "42c9b5e19c42f42eeee22b8a73e8668297166c3e"
+          }
+        },
+        {
           "client_id": "834121133893-rgpd5c7cv4htn5io7q4k6siltg15fo1r.apps.googleusercontent.com",
           "client_type": 3
         }

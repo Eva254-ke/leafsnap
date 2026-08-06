@@ -117,7 +117,7 @@ class _OnboardingScreen1State extends State<OnboardingScreen1>
                 const SizedBox(height: 16),
                 const Row(
                   children: [
-                    LeafSnapLogo(),
+                    ChloraLogo(),
                   ],
                 ),
                 

@@ -341,8 +341,8 @@ class OnboardingDots extends StatelessWidget {
   }
 }
 
-class LeafSnapLogo extends StatelessWidget {
-  const LeafSnapLogo({super.key, this.centered = false});
+class ChloraLogo extends StatelessWidget {
+  const ChloraLogo({super.key, this.centered = false});
 
   final bool centered;
   static const _logoSize = 40.0;
@@ -377,7 +377,7 @@ class LeafSnapLogo extends StatelessWidget {
         ),
         const SizedBox(width: AppSpacing.md),
         Text(
-          'LeafSnap AI',
+          'Chlora',
           style: GoogleFonts.manrope(
             fontSize: 24,
             fontWeight: FontWeight.w800,

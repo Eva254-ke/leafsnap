@@ -19,8 +19,11 @@ class PosthogService {
     final config = PostHogConfig(apiKey)
       ..host = host
       ..captureApplicationLifecycleEvents = true
-      ..sessionReplay = kReleaseMode
+      ..sessionReplay = true
       ..debug = kDebugMode;
+
+    config.sessionReplayConfig.maskAllTexts = false;
+    config.sessionReplayConfig.maskAllImages = false;
 
     await Posthog().setup(config);
     print('✅ PostHog initialized with host: $host');

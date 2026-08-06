@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 
 import '../../components/google_sign_in_button.dart';
 import '../../services/auth_service.dart';
@@ -167,76 +168,46 @@ class _AuthScreenState extends State<AuthScreen> {
               ],
 
               // Email field
-              TextField(
-                controller: _emailController,
-                enabled: !_isLoading,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  hintText: 'you@example.com',
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              PostHogMaskWidget(
+                child: TextField(
+                  controller: _emailController,
+                  enabled: !_isLoading,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    hintText: 'you@example.com',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
+                  keyboardType: TextInputType.emailAddress,
                 ),
-                keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
 
               // Password field
-              TextField(
-                controller: _passwordController,
-                enabled: !_isLoading,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  hintText: 'Enter your password',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Confirm password field (only for sign up)
-              if (_isSignUp) ...[
-                TextField(
-                  controller: _confirmPasswordController,
+              PostHogMaskWidget(
+                child: TextField(
+                  controller: _passwordController,
                   enabled: !_isLoading,
-                  obscureText: _obscureConfirmPassword,
+                  obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    labelText: 'Confirm Password',
-                    hintText: 'Confirm your password',
+                    labelText: 'Password',
+                    hintText: 'Enter your password',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureConfirmPassword
+                        _obscurePassword
                             ? Icons.visibility_off_outlined
                             : Icons.visibility_outlined,
                       ),
                       onPressed: () {
                         setState(() {
-                          _obscureConfirmPassword = !_obscureConfirmPassword;
+                          _obscurePassword = !_obscurePassword;
                         });
                       },
                     ),
@@ -246,6 +217,42 @@ class _AuthScreenState extends State<AuthScreen> {
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 14,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Confirm password field (only for sign up)
+              if (_isSignUp) ...[
+                PostHogMaskWidget(
+                  child: TextField(
+                    controller: _confirmPasswordController,
+                    enabled: !_isLoading,
+                    obscureText: _obscureConfirmPassword,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm Password',
+                      hintText: 'Confirm your password',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureConfirmPassword = !_obscureConfirmPassword;
+                          });
+                        },
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -261,11 +268,13 @@ class _AuthScreenState extends State<AuthScreen> {
                         context: context,
                         builder: (context) => AlertDialog(
                           title: const Text('Reset Password'),
-                          content: TextField(
-                            decoration: InputDecoration(
-                              labelText: 'Email',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                          content: PostHogMaskWidget(
+                            child: TextField(
+                              decoration: InputDecoration(
+                                labelText: 'Email',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
                             ),
                           ),
@@ -297,7 +306,6 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
-
               // Primary button
               ElevatedButton(
                 onPressed: _isLoading ? null : _handleEmailAuth,

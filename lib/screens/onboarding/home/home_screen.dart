@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../components/remote_config_ui.dart';
 import '../../../services/api_error.dart';
+import '../../../services/billing_service.dart';
 import '../../../services/inaturalist_api.dart';
 import '../../../services/location_permission_service.dart';
 import '../../../services/perenual_api.dart';
@@ -70,8 +71,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     'Bean': 'https://www.thespruce.com/thmb/cSsyLW4TIiQg0o4rk0wNdXzWrMM=/3564x2477/filters:no_upscale():max_bytes(150000):strip_icc()/GettyImages-1820512381-5bec11bf46e0fb0026b2d89c.jpg',
     'Beans': 'https://www.thespruce.com/thmb/cSsyLW4TIiQg0o4rk0wNdXzWrMM=/3564x2477/filters:no_upscale():max_bytes(150000):strip_icc()/GettyImages-1820512381-5bec11bf46e0fb0026b2d89c.jpg',
     'Phaseolus vulgaris': 'https://www.thespruce.com/thmb/cSsyLW4TIiQg0o4rk0wNdXzWrMM=/3564x2477/filters:no_upscale():max_bytes(150000):strip_icc()/GettyImages-1820512381-5bec11bf46e0fb0026b2d89c.jpg',
-    'Spinach': 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&h=300&fit=crop',
-    'Kale': 'https://images.unsplash.com/photo-1582515073490-3993186489c6?w=400&h=300&fit=crop',
+    'Spinach': 'https://media.istockphoto.com/id/477028180/photo/sliverbeet-grow-in-vegetable-garden.jpg?s=612x612&w=0&k=20&c=w3NUQmdUTE5idrgVqn101GoHTwwjBqf6QGnvTvqtgHs=',
+    'Kale': 'https://tse4.mm.bing.net/th/id/OIP.XfJY39qYuB4mZ8nC2FQD3gHaEz?rs=1&pid=ImgDetMain&o=7&rm=3',
     'Cabbage':
         'https://tse1.mm.bing.net/th/id/OIP.5ATExUzSl3XqRjWJn9KebQHaFq?w=570&h=436&rs=1&pid=ImgDetMain&o=7&rm=3',
     'Onion': 'https://growhappierplants.com/wp-content/uploads/2023/05/green-onion-plants.jpg',
@@ -803,7 +804,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   bool _prefersCuratedImage(String plantName) {
     final normalizedName = _normalizePlantName(plantName);
-    return normalizedName.contains('bean') ||
+    return normalizedName.contains('spinach') ||
+        normalizedName.contains('spinacia oleracea') ||
+        normalizedName.contains('bean') ||
         normalizedName.contains('phaseolus') ||
         normalizedName.contains('cabbage') ||
         normalizedName.contains('onion') ||
@@ -1365,7 +1368,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             child: _buildSmallCard(
               title: weed.commonName ?? weed.title,
               imageUrl: weed.imageUrl,
-              onTap: () => _navigateToINaturalistDetails(weed.id),
+              onTap: () async {
+                if (!BillingService.instance.isPremium.value) {
+                  await BillingService.instance.presentPaywall();
+                  if (!BillingService.instance.isPremium.value) return;
+                }
+                _navigateToINaturalistDetails(weed.id);
+              },
             ),
           );
         },

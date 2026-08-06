@@ -1,6 +1,6 @@
 {
   "maintenance_mode": false,
-  "maintenance_message": "We are updating LeafSnap AI. Please check back shortly.",
+  "maintenance_message": "We are updating Chlora. Please check back shortly.",
   "force_update_min_build": 1,
   "force_update_url": "https://play.google.com/store/apps/details?id=com.example.leafsnap_ai",
 
@@ -18,7 +18,7 @@
   "terms_of_use_url": "https://leafsnap.app/terms",
   "help_url": "https://leafsnap.app/help",
   "support_email": "support@leafsnap.app",
-  "support_subject": "LeafSnap Support Request",
+  "support_subject": "Chlora Support Request",
   "support_body": "Describe your issue here:\n\n",
   "ios_store_url": "https://apps.apple.com/app/leafsnap/id123456789",
   "android_store_url": "https://play.google.com/store/apps/details?id=com.example.leafsnap_ai",

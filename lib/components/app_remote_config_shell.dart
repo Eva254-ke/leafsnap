@@ -58,7 +58,7 @@ class _AppRemoteConfigShellState extends State<AppRemoteConfigShell> {
         if (maintenanceMode) {
           return _MaintenanceScreen(
             message: maintenanceMessage.isEmpty
-                ? 'We are tuning LeafSnap right now. Please check back shortly.'
+                ? 'We are tuning Chlora right now. Please check back shortly.'
                 : maintenanceMessage,
             onRetry: rc.refresh,
           );
@@ -259,7 +259,7 @@ class _ForceUpdateScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               const Text(
-                'Please update to continue using LeafSnap AI.',
+                'Please update to continue using Chlora.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,

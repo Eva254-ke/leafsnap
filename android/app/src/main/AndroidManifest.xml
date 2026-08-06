@@ -6,9 +6,10 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
-        android:label="LeafSnap AI"
+        android:label="Chlora"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round">
         <meta-data android:name="com.posthog.posthog.PROJECT_TOKEN" android:value="phc_CjcZEL9LjsH5QzgKYJgFNjvBcWshdYC8jft7GoV7AdVh" />
         <meta-data android:name="com.posthog.posthog.POSTHOG_HOST" android:value="https://us.i.posthog.com" />
         <meta-data android:name="com.posthog.posthog.TRACK_APPLICATION_LIFECYCLE_EVENTS" android:value="true" />

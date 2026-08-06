@@ -9,6 +9,7 @@ class WeatherSnapshot {
   final double maxTempC;
   final int weatherCode;
   final bool isDay;
+  final double? humidity;
 
   WeatherSnapshot({
     required this.currentTempC,
@@ -16,6 +17,7 @@ class WeatherSnapshot {
     required this.maxTempC,
     required this.weatherCode,
     required this.isDay,
+    this.humidity,
   });
 
   factory WeatherSnapshot.fromMap(Map<String, dynamic> map) {
@@ -26,6 +28,7 @@ class WeatherSnapshot {
         (daily['temperature_2m_min'] as List<dynamic>? ?? <dynamic>[]);
     final maxTemps =
         (daily['temperature_2m_max'] as List<dynamic>? ?? <dynamic>[]);
+    final currentRelativeHumidity = current['relative_humidity_2m'] as num?;
 
     return WeatherSnapshot(
       currentTempC: (current['temperature_2m'] as num?)?.toDouble() ?? 0,
@@ -33,6 +36,7 @@ class WeatherSnapshot {
       maxTempC: maxTemps.isNotEmpty ? (maxTemps.first as num).toDouble() : 0,
       weatherCode: (current['weather_code'] as num?)?.toInt() ?? -1,
       isDay: (current['is_day'] as num?)?.toInt() == 1,
+      humidity: currentRelativeHumidity?.toDouble(),
     );
   }
 

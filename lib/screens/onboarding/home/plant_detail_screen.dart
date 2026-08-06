@@ -1414,9 +1414,8 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
 
   _CareProfile _careProfileForPlant(String plantName) {
     final normalized = _normalizePlantName(plantName);
-    if (normalized.contains('tomato') || normalized.contains('solanum lycopersicum')) {
-      return _CareProfile.tomato();
-    }
+    // Tomato-specific care removed; using generic care based on uploaded plant.
+
     if (normalized.contains('maize') ||
         normalized.contains('corn') ||
         normalized.contains('zea mays')) {
@@ -1520,66 +1519,8 @@ class _CareProfile {
   final String diseasePrevention;
   final List<String> diseaseChecklist;
 
-  factory _CareProfile.tomato() {
-    return _CareProfile(
-      wateringStages: const <_WateringStage>[
-        _WateringStage('Seedling', 3, Color(0xFF5ED03D), Icons.spa_rounded),
-        _WateringStage('Growing', 5, Color(0xFF34C6AD), Icons.local_florist_rounded),
-        _WateringStage('Flowering', 4, Color(0xFFFF9800), Icons.filter_vintage_rounded),
-        _WateringStage('Fruiting', 4, Color(0xFFFF6F6A), Icons.eco_rounded),
-      ],
-      wateringTips:
-          'Tomato thrives in evenly moist soil. Water deeply at the base, then allow the top layer to start drying before watering again. Avoid wetting leaves because this raises blight and fungal risk.',
-      sunlight: 'Full sun',
-      sunlightTips:
-          'Give tomato 6-8 hours of direct sun. In very hot afternoons, light shade helps reduce blossom drop and leaf scorch.',
-      sunlightScore: 0.78,
-      temperatureRange: '18 C - 30 C',
-      minTempC: 18,
-      maxTempC: 30,
-      temperatureTips:
-          'Protect tomatoes from cold nights below 12 C and heat stress above 32 C. Mulch helps stabilize root temperature.',
-      fertilizerCadence: 'Every 2-3 weeks',
-      npkHint: 'Balanced early, potassium-rich during fruiting',
-      fertilizingTips:
-          'Feed lightly after establishment, then increase potassium when flowers and fruit appear. Too much nitrogen makes leafy plants with weak fruiting.',
-      fertilizerChecklist: const <String>[
-        'Add compost before planting.',
-        'Use calcium support if blossom-end rot appears.',
-        'Reduce nitrogen once flowering starts.',
-      ],
-      pruningCheck:
-          'When tomato plants form many side shoots, start pruning to improve airflow and move energy toward flowering and fruiting.',
-      pruningTips:
-          'Remove lower leaves that touch soil and pinch crowded suckers on indeterminate varieties. Keep enough foliage to shade fruit.',
-      pruningChecklist: const <String>[
-        'Prune in the morning when leaves are dry.',
-        'Remove yellow or diseased lower leaves first.',
-        'Disinfect tools between sick plants.',
-      ],
-      repotCadence: 'Once roots circle the pot',
-      repottingTips:
-          'Move seedlings into deeper containers when roots fill the starter cell. Bury part of the stem so new roots can form.',
-      repottingChecklist: const <String>[
-        'Choose a pot with strong drainage.',
-        'Do not disturb roots during flowering unless necessary.',
-        'Water after repotting to settle soil.',
-      ],
-      soilTypes: const <String>['Loam', 'Garden Soil'],
-      minPh: 6,
-      maxPh: 7,
-      soilTips:
-          'Tomato prefers loam rich in organic matter with good drainage. Keep soil moist, fertile, and airy to avoid root disease.',
-      commonProblems: const <String>['Blight', 'Leaf spot', 'Aphids'],
-      diseasePrevention:
-          'Space plants well, avoid overhead watering, remove infected leaves quickly, and rotate tomatoes away from related crops each season.',
-      diseaseChecklist: const <String>[
-        'Check lower leaves twice a week.',
-        'Remove leaves with spreading brown spots.',
-        'Use mulch to stop soil splash.',
-      ],
-    );
-  }
+
+
 
   factory _CareProfile.maize() {
     return _CareProfile(

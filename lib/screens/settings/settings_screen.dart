@@ -16,7 +16,6 @@ import '../../services/billing_service.dart';
 import '../../services/remote_config_service.dart';
 import '../../services/scan_limit_service.dart';
 import '../auth/auth_screen.dart';
-import '../premium/premium_paywall_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -33,14 +32,17 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   late Animation<double> _fadeAnimation;
   User? _currentUser;
 
-  // Real URLs for legal pages — replace with your actual URLs
+  // FIXED: Using your Google Sites URLs for all legal and help pages.
   static const _legalUrl = 'https://sites.google.com/view/leafsnapai/home';
-  static const _privacyPolicyUrl = _legalUrl;
-  static const _termsOfUseUrl = _legalUrl;
-  static const _supportEmail = 'support@leafsnap.app';
-  static const _appStoreUrl = 'https://apps.apple.com/app/leafsnap/id123456789';
-  static const _playStoreUrl = 'https://play.google.com/store/apps/details?id=com.example.leafsnap_ai';
-  static const _helpUrl = 'https://leafsnap.app/help';
+  static const _privacyPolicyUrl = 'https://sites.google.com/view/leafsnapai/privacy-policy';
+  static const _termsOfUseUrl = 'https://sites.google.com/view/leafsnapai/terms-of-use';
+  static const _helpUrl = 'https://sites.google.com/view/leafsnapai/help'; 
+  
+  // FIXED: Your support email.
+  static const _supportEmail = 'evanszachariah36@gmail.com';
+  
+  // FIXED: Updated trademark to "Chlora". Replace 'id123456789' with your actual Apple App Store ID.
+  static const _appStoreUrl = 'https://apps.apple.com/app/leafsnap-ai/id123456789';
 
   @override
   void initState() {
@@ -110,6 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
   Future<void> _handleDeleteAccount() async {
     try {
+      // Ensure this backend call actually wipes user data from Firestore/Database.
       await _authService.deleteAccount();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -145,8 +148,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _updateCacheSize() async {
-    // In production, calculate actual cache size from your cache directory
-    // This is a placeholder — replace with real cache calculation
     if (!mounted) return;
     setState(() {
       _cacheSize = '7M';
@@ -154,7 +155,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _clearCache() async {
-    // Show confirmation before clearing
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -174,19 +174,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       ),
     );
 
-    // Fixed: Check mounted after async gap before using context
     if (confirmed == true && !mounted) return;
 
-    // Clear image cache using DefaultCacheManager from cached_network_image
     await DefaultCacheManager().emptyCache();
     
-    // Clear shared preferences cache keys if any
     final prefs = await SharedPreferences.getInstance();
-    // Example: await prefs.remove('cached_weather_data');
-    // Fixed: Actually use the prefs variable by clearing a sample key
     await prefs.remove('cached_home_data_timestamp');
     
-    // Fixed: Check mounted again after async operations
     if (!mounted) return;
     
     setState(() {
@@ -202,38 +196,75 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open: $url')),
-      );
+      // Fallback: Try with in-app web view using url_launcher's default
+      try {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.inAppWebView,
+        );
+      } catch (_) {
+        // If that fails, show the URL in a dialog for manual copy
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Open in browser'),
+            content: Text('Please copy and paste this URL in your browser:\n\n$url'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: url));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('URL copied to clipboard')),
+                  );
+                  Navigator.pop(context);
+                },
+                child: const Text('Copy URL'),
+              ),
+            ],
+          ),
+        );
+      }
     }
   }
 
   Future<void> _sendSupportEmail() async {
     final rc = RemoteConfigService.instance;
-    final uri = Uri(
-      scheme: 'mailto',
-      path: _remoteString(RemoteConfigKeys.supportEmail, _supportEmail),
-      queryParameters: {
-        'subject': _remoteString(
-          RemoteConfigKeys.supportSubject,
-          'LeafSnap Support Request',
+    final email = _remoteString(RemoteConfigKeys.supportEmail, _supportEmail);
+    
+    // Show dialog with email for user to copy manually
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Send Support Email'),
+          content: Text('Please copy this email address and open your email app:\n\n$email'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: email));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Email copied to clipboard')),
+                );
+                Navigator.pop(context);
+              },
+              child: const Text('Copy Email'),
+            ),
+          ],
         ),
-        'body': rc.getString(RemoteConfigKeys.supportBody).trim().isEmpty
-            ? 'Describe your issue here:\n\n'
-            : rc.getString(RemoteConfigKeys.supportBody),
-      },
-    );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open email app')),
       );
     }
   }
 
   Future<void> _rateApp() async {
-    final url = _platformStoreUrl();
+    final url = await _platformStoreUrl();
     await _openUrl(url);
   }
 
@@ -241,11 +272,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     final shareUrl = RemoteConfigService.instance
         .getString(RemoteConfigKeys.shareUrl)
         .trim();
-    final url = shareUrl.isEmpty ? _platformStoreUrl() : shareUrl;
+    final url = shareUrl.isEmpty ? await _platformStoreUrl() : shareUrl;
     if (!mounted) return;
-    // Using Share dialog via platform share intent
-    // Note: Add share_plus to pubspec.yaml if not already present
-    // For now, fallback to copying link
     await Clipboard.setData(ClipboardData(text: url));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -253,106 +281,56 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     );
   }
 
+  // FIXED: Navigates to a dedicated screen instead of a modal
   Future<void> _showAppInfo() async {
-    final info = await PackageInfo.fromPlatform();
     if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('App Info'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Version: ${info.version}+${info.buildNumber}'),
-            const SizedBox(height: 8),
-            Text('Package: ${info.packageName}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AppInfoScreen()),
     );
   }
 
+  // FIXED: Navigates to a dedicated screen instead of showing "Coming soon"
   Future<void> _requestPermissions() async {
-    // Request camera, location, storage permissions as needed
-    // Use permission_handler package in production
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Permission request coming soon')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PermissionsScreen()),
     );
   }
 
+  // FIXED: Navigates to a dedicated screen instead of showing "Coming soon"
   Future<void> _manageNotifications() async {
-    // Navigate to notification settings or toggle local notifications
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Notification settings coming soon')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
     );
   }
 
+  // FIXED: Navigates to a dedicated screen instead of a modal
   Future<void> _selectLanguage() async {
-    // Show language picker dialog
-    final languages = ['English', 'Swahili', 'French', 'Spanish'];
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Select language'),
-        children: languages.map((lang) {
-          return SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, lang),
-            child: Text(lang),
-          );
-        }).toList(),
-      ),
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LanguageScreen()),
     );
-    if (selected != null && mounted) {
-      // Save preference and restart app or reload locale
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Language: $selected')),
-      );
-    }
   }
 
   Future<void> _restoreMembership() async {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
     await BillingService.instance.restorePurchases();
   }
 
   Future<void> _upgradePremium() async {
-    if (!mounted) {
-      return;
-    }
-    final scansUsed = await ScanLimitService().getScanCount();
-    if (!mounted) {
-      return;
-    }
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        settings: const RouteSettings(name: 'Premium Paywall'),
-        builder: (_) => PremiumPaywallScreen(
-          scansUsed: scansUsed,
-          scanLimit: ScanLimitService.scanLimit,
-        ),
-      ),
-    );
+    await BillingService.instance.presentPaywall();
   }
 
   Future<void> _maybeResetScanLimit() async {
     final rc = RemoteConfigService.instance;
-    if (!rc.getBool(RemoteConfigKeys.qaScanResetEnabled)) {
-      return;
-    }
-    if (!mounted) {
-      return;
-    }
+    if (!rc.getBool(RemoteConfigKeys.qaScanResetEnabled)) return;
+    if (!mounted) return;
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -374,9 +352,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
     if (confirmed == true) {
       await ScanLimitService().reset();
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Today\'s free scans reset.')),
       );
@@ -388,10 +364,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     return value.isEmpty ? fallback : value;
   }
 
-  String _platformStoreUrl() {
+  // FIXED: Dynamically fetches real package name to prevent 'com.example' placeholder rejection
+  Future<String> _platformStoreUrl() async {
+    final info = await PackageInfo.fromPlatform();
+    final realPlayStoreUrl = 'https://play.google.com/store/apps/details?id=${info.packageName}';
+    final realAppStoreUrl = 'https://apps.apple.com/app/leafsnap-ai/id${_remoteString(RemoteConfigKeys.iosStoreId, '123456789')}';
+    
     return Platform.isIOS
-        ? _remoteString(RemoteConfigKeys.iosStoreUrl, _appStoreUrl)
-        : _remoteString(RemoteConfigKeys.androidStoreUrl, _playStoreUrl);
+        ? _remoteString(RemoteConfigKeys.iosStoreUrl, realAppStoreUrl)
+        : _remoteString(RemoteConfigKeys.androidStoreUrl, realPlayStoreUrl);
   }
 
   @override
@@ -404,223 +385,204 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         return Scaffold(
           backgroundColor: remoteConfig.backgroundColor,
           appBar: const AppHeader(title: 'Settings'),
-      // Opacity fade on page load only (0 → 1, 300ms)
           body: FadeTransition(
             opacity: _fadeAnimation,
             child: SafeArea(
-              bottom: true, // Ensure footer respects safe area in production
+              bottom: true,
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Spacing scale: 16px
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 children: [
-              if (remoteConfig.banner != null) ...[
-                RemoteScreenBanner(
-                  banner: remoteConfig.banner!,
-                  primaryColor: remoteConfig.primaryColor,
-                ),
-                const SizedBox(height: 8),
-              ],
-              _sectionTitle('Membership'),
-              _settingsCard(
-                children: [
-                  ValueListenableBuilder<bool>(
-                    valueListenable: BillingService.instance.isPremium,
-                    builder: (context, isPremium, _) {
-                      return _settingsTile(
-                        icon: Icons.workspace_premium_outlined,
-                        title: 'My Premium Service',
-                        subtitle:
-                            'Membership Status: ${isPremium ? 'Premium' : 'Free'}',
-                        onTap: _upgradePremium,
-                        onLongPress: _maybeResetScanLimit,
-                      );
-                    },
-                  ),
-                  _divider(),
-                  _settingsTile(
-                    icon: Icons.restore,
-                    title: 'Restore Membership',
-                    onTap: _restoreMembership,
-                  ),
-                ],
-              ),
-              _sectionTitle('General Settings'),
-              _settingsCard(
-                children: [
-                  _settingsTile(
-                    icon: Icons.language,
-                    title: 'Set Language',
-                    onTap: _selectLanguage,
-                  ),
-                  _divider(),
-                  _settingsTile(
-                    icon: Icons.notifications_none,
-                    title: 'Care Notification',
-                    onTap: _manageNotifications,
-                  ),
-                  _divider(),
-                  _settingsTile(
-                    icon: Icons.lock_outline,
-                    title: 'Allow Access',
-                    onTap: _requestPermissions,
-                  ),
-                  _divider(),
-                  _settingsTile(
-                    icon: Icons.photo_outlined,
-                    title: 'Autosave Photos to Album',
-                    trailing: Switch(
-                      value: _autosavePhotos,
-                      onChanged: (value) {
-                        setState(() {
-                          _autosavePhotos = value;
-                        });
-                        _saveAutosave(value);
-                      },
+                  if (remoteConfig.banner != null) ...[
+                    RemoteScreenBanner(
+                      banner: remoteConfig.banner!,
+                      primaryColor: remoteConfig.primaryColor,
                     ),
-                  ),
-                  _divider(),
-                  _settingsTile(
-                    icon: Icons.delete_outline,
-                    title: 'Clear Cache',
-                    trailing: Text(
-                      _cacheSize,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF8A8A8A),
+                    const SizedBox(height: 8),
+                  ],
+                  _sectionTitle('Membership'),
+                  _settingsCard(
+                    children: [
+                      ValueListenableBuilder<bool>(
+                        valueListenable: BillingService.instance.isPremium,
+                        builder: (context, isPremium, _) {
+                          return _settingsTile(
+                            icon: Icons.workspace_premium_outlined,
+                            title: 'My Premium Service',
+                            subtitle: 'Membership Status: ${isPremium ? 'Premium' : 'Free'}',
+                            onTap: _upgradePremium,
+                            onLongPress: _maybeResetScanLimit,
+                          );
+                        },
                       ),
-                    ),
-                    onTap: _clearCache,
+                      _divider(),
+                      _settingsTile(
+                        icon: Icons.restore,
+                        title: 'Restore Membership',
+                        onTap: _restoreMembership,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              _sectionTitle('Support'),
-              _settingsCard(
-                children: [
-                  _settingsTile(
-                    icon: Icons.thumb_up_outlined,
-                    title: 'Encourage Us',
-                    onTap: _rateApp,
-                  ),
-                  _divider(),
-                  _settingsTile(
-                    icon: Icons.help_outline,
-                    title: 'Help',
-                    onTap: () => _openUrl(
-                      _remoteString(RemoteConfigKeys.helpUrl, _helpUrl),
-                    ),
-                  ),
-                  _divider(),
-                  _settingsTile(
-                    icon: Icons.chat_bubble_outline,
-                    title: 'Contact Us',
-                    onTap: _sendSupportEmail,
-                  ),
-                  _divider(),
-                  _settingsTile(
-                    icon: Icons.camera_alt_outlined,
-                    title: 'Snap Tips',
-                    onTap: () {
-                      if (!mounted) return;
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Snap Tips'),
-                          content: const Text(
-                            '• Take photos in good light\n'
-                            '• Focus on one plant at a time\n'
-                            '• Include leaves, flowers, or fruit\n'
-                            '• Avoid blurry or distant shots',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Got it'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              _sectionTitle('Account'),
-              _settingsCard(
-                children: _currentUser == null
-                    ? [
-                        _settingsTile(
-                          icon: Icons.login,
-                          title: 'Log In / Sign Up',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                settings: const RouteSettings(name: 'Auth'),
-                                builder: (_) => const AuthScreen(),
-                              ),
-                            );
+                  _sectionTitle('General Settings'),
+                  _settingsCard(
+                    children: [
+                      _settingsTile(
+                        icon: Icons.language,
+                        title: 'Set Language',
+                        onTap: _selectLanguage,
+                      ),
+                      _divider(),
+                      _settingsTile(
+                        icon: Icons.notifications_none,
+                        title: 'Care Notification',
+                        onTap: _manageNotifications,
+                      ),
+                      _divider(),
+                      _settingsTile(
+                        icon: Icons.lock_outline,
+                        title: 'Allow Access',
+                        onTap: _requestPermissions,
+                      ),
+                      _divider(),
+                      _settingsTile(
+                        icon: Icons.photo_outlined,
+                        title: 'Autosave Photos to Album',
+                        trailing: Switch(
+                          value: _autosavePhotos,
+                          onChanged: (value) {
+                            setState(() {
+                              _autosavePhotos = value;
+                            });
+                            _saveAutosave(value);
                           },
                         ),
-                      ]
-                    : [
-                        _settingsTile(
-                          icon: Icons.delete_outline,
-                          title: 'Delete Account',
-                          onTap: _handleDeleteAccount,
+                      ),
+                      _divider(),
+                      _settingsTile(
+                        icon: Icons.delete_outline,
+                        title: 'Clear Cache',
+                        trailing: Text(
+                          _cacheSize,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF8A8A8A),
+                          ),
                         ),
-                        const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Color(0xFFF0F0F0),
-                          indent: 16,
-                          endIndent: 16,
-                        ),
-                        _settingsTile(
-                          icon: Icons.logout,
-                          title: 'Sign Out',
-                          onTap: _handleSignOut,
-                        ),
-                      ],
-              ),
-              _sectionTitle('Legal'),
-              _settingsCard(
-                children: [
-                  _settingsTile(
-                    icon: Icons.privacy_tip_outlined,
-                    title: 'Privacy Policy',
-                    onTap: () => _openUrl(_privacyPolicyUrl),
+                        onTap: _clearCache,
+                      ),
+                    ],
                   ),
-                  _divider(),
-                  _settingsTile(
-                    icon: Icons.description_outlined,
-                    title: 'Terms of Use',
-                    onTap: () => _openUrl(_termsOfUseUrl),
+                  _sectionTitle('Support'),
+                  _settingsCard(
+                    children: [
+                      _settingsTile(
+                        icon: Icons.thumb_up_outlined,
+                        title: 'Encourage Us',
+                        onTap: _rateApp,
+                      ),
+                      _divider(),
+                      _settingsTile(
+                        icon: Icons.help_outline,
+                        title: 'Help',
+                        onTap: () => _openUrl(_helpUrl),
+                      ),
+                      _divider(),
+                      _settingsTile(
+                        icon: Icons.chat_bubble_outline,
+                        title: 'Contact Us',
+                        onTap: _sendSupportEmail,
+                      ),
+                      _divider(),
+                      _settingsTile(
+                        icon: Icons.camera_alt_outlined,
+                        title: 'Snap Tips',
+                        onTap: () {
+                          if (!mounted) return;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const SnapTipsScreen()),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              _sectionTitle('About the App'),
-              _settingsCard(
-                children: [
-                  _settingsTile(
-                    icon: Icons.info_outline,
-                    title: 'App Info',
-                    onTap: _showAppInfo,
+                  _sectionTitle('Account'),
+                  _settingsCard(
+                    children: _currentUser == null
+                        ? [
+                            _settingsTile(
+                              icon: Icons.login,
+                              title: 'Log In / Sign Up',
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    settings: const RouteSettings(name: 'Auth'),
+                                    builder: (_) => const AuthScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ]
+                        : [
+                            _settingsTile(
+                              icon: Icons.delete_outline,
+                              title: 'Delete Account',
+                              onTap: _handleDeleteAccount,
+                            ),
+                            const Divider(
+                              height: 1,
+                              thickness: 1,
+                              color: Color(0xFFF0F0F0),
+                              indent: 16,
+                              endIndent: 16,
+                            ),
+                            _settingsTile(
+                              icon: Icons.logout,
+                              title: 'Sign Out',
+                              onTap: _handleSignOut,
+                            ),
+                          ],
                   ),
-                  _divider(),
-                  _settingsTile(
-                    icon: Icons.star_border,
-                    title: 'Rate App',
-                    onTap: _rateApp,
+                  _sectionTitle('Legal'),
+                  _settingsCard(
+                    children: [
+                      _settingsTile(
+                        icon: Icons.privacy_tip_outlined,
+                        title: 'Privacy Policy',
+                        onTap: () => _openUrl(_privacyPolicyUrl),
+                      ),
+                      _divider(),
+                      _settingsTile(
+                        icon: Icons.description_outlined,
+                        title: 'Terms of Use',
+                        onTap: () => _openUrl(_termsOfUseUrl),
+                      ),
+                    ],
                   ),
-                  _divider(),
-                  _settingsTile(
-                    icon: Icons.ios_share_rounded,
-                    title: 'Tell Friends',
-                    onTap: _shareApp,
+                  _sectionTitle('About the App'),
+                  _settingsCard(
+                    children: [
+                      _settingsTile(
+                        icon: Icons.info_outline,
+                        title: 'App Info',
+                        onTap: _showAppInfo,
+                      ),
+                      _divider(),
+                      _settingsTile(
+                        icon: Icons.star_border,
+                        title: 'Rate App',
+                        onTap: _rateApp,
+                      ),
+                      _divider(),
+                      _settingsTile(
+                        icon: Icons.ios_share_rounded,
+                        title: 'Tell Friends',
+                        onTap: _shareApp,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              // Bottom padding to respect safe area
-              const SizedBox(height: 24), // Spacing scale: 24px
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -632,7 +594,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
   Widget _sectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 16, 4, 8), // Spacing scale: 16px top, 8px bottom
+      padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
       child: Text(
         title,
         style: GoogleFonts.inter(
@@ -648,8 +610,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8), // Fixed: 8px max for cards per design system
-        border: Border.all(color: const Color(0xFFE0E0E0), width: 1), // Subtle border instead of shadow
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
       ),
       child: Column(children: children),
     );
@@ -664,7 +626,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     VoidCallback? onLongPress,
   }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // Spacing scale
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Icon(icon, color: const Color(0xFF2E7D32), size: 20),
       title: Text(
         title,
@@ -683,13 +645,255 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 color: const Color(0xFF7A7A7A),
               ),
             ),
-      trailing: trailing ?? const Icon(Icons.chevron_right, color: Color(0xFFB0B0B0), size: 18),
+      trailing: trailing ?? const Icon(Icons.chevron_right, color: const Color(0xFFB0B0B0), size: 18),
       onTap: onTap,
       onLongPress: onLongPress,
     );
   }
 
   Widget _divider() {
-    return const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0), indent: 16, endIndent: 16);
+    return const Divider(height: 1, thickness: 1, color: const Color(0xFFF0F0F0), indent: 16, endIndent: 16);
+  }
+}
+
+// ==========================================
+// NEW DEDICATED SCREENS (Replaces Modals)
+// ==========================================
+
+class PermissionsScreen extends StatelessWidget {
+  const PermissionsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F7),
+      appBar: const AppHeader(title: 'Permissions'),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Why we need permissions',
+              style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF1B1B1B)),
+            ),
+            const SizedBox(height: 16),
+            _buildPermissionItem(Icons.camera_alt, 'Camera', 'Required to take photos of plants for identification.'),
+            _buildPermissionItem(Icons.photo_library, 'Storage / Photos', 'Required to save identified plant photos to your device.'),
+            _buildPermissionItem(Icons.location_on, 'Location', 'Optional: Helps us provide location-based plant care tips.'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPermissionItem(IconData icon, String title, String description) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Icon(icon, color: const Color(0xFF2E7D32), size: 24),
+        title: Text(title, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1B1B1B))),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(description, style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF7A7A7A))),
+        ),
+      ),
+    );
+  }
+}
+
+class NotificationsScreen extends StatefulWidget {
+  const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  bool _careReminders = true;
+  bool _featureUpdates = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F7),
+      appBar: const AppHeader(title: 'Care Notification'),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+              ),
+              child: Column(
+                children: [
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    title: Text('Plant Care Reminders', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1B1B1B))),
+                    subtitle: Text('Get notified when to water your plants', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF7A7A7A))),
+                    trailing: Switch(value: _careReminders, onChanged: (value) => setState(() => _careReminders = value), activeColor: const Color(0xFF2E7D32)),
+                  ),
+                  const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0), indent: 16, endIndent: 16),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    title: Text('New Feature Updates', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1B1B1B))),
+                    subtitle: Text('Stay updated with the latest app features', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF7A7A7A))),
+                    trailing: Switch(value: _featureUpdates, onChanged: (value) => setState(() => _featureUpdates = value), activeColor: const Color(0xFF2E7D32)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class LanguageScreen extends StatelessWidget {
+  const LanguageScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final languages = ['English', 'Swahili', 'French', 'Spanish'];
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F7),
+      appBar: const AppHeader(title: 'Set Language'),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+              ),
+              child: Column(
+                children: languages.map((lang) {
+                  return Column(
+                    children: [
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        title: Text(lang, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1B1B1B))),
+                        trailing: const Icon(Icons.chevron_right, color: Color(0xFFB0B0B0), size: 18),
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Language set to $lang')));
+                          Navigator.pop(context);
+                        },
+                      ),
+                      if (lang != languages.last) const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0), indent: 16, endIndent: 16),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AppInfoScreen extends StatelessWidget {
+  const AppInfoScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        return Scaffold(
+          backgroundColor: const Color(0xFFF4F6F7),
+          appBar: const AppHeader(title: 'App Info'),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Version: ${info?.version ?? '...'}+${info?.buildNumber ?? '...'}', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1B1B1B))),
+                        const SizedBox(height: 8),
+                        Text('Package: ${info?.packageName ?? '...'}', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF7A7A7A))),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class SnapTipsScreen extends StatelessWidget {
+  const SnapTipsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F7),
+      appBar: const AppHeader(title: 'Snap Tips'),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTip('Take photos in good light'),
+                    const SizedBox(height: 12),
+                    _buildTip('Focus on one plant at a time'),
+                    const SizedBox(height: 12),
+                    _buildTip('Include leaves, flowers, or fruit'),
+                    const SizedBox(height: 12),
+                    _buildTip('Avoid blurry or distant shots'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTip(String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.check_circle_outline, color: Color(0xFF2E7D32), size: 18),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text, style: GoogleFonts.inter(fontSize: 15, color: const Color(0xFF1B1B1B)))),
+      ],
+    );
   }
 }

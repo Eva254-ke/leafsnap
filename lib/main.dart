@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
@@ -49,21 +50,27 @@ class PosthogRouteObserver extends RouteObserver<PageRoute<dynamic>> {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
+  await PosthogService.instance.init();
+
   final initialization = _initializeApp();
   runApp(MyApp(initialization: initialization));
+  unawaited(_initializeDeferredServices(initialization));
 }
 
 Future<void> _initializeApp() async {
-  await dotenv.load(fileName: '.env');
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
   await RemoteConfigService.instance.init();
-  await PosthogService.instance.init();
+}
+
+Future<void> _initializeDeferredServices(Future<void> appInitialization) async {
+  await appInitialization;
   await AuthService().ensureSignedIn();
-  unawaited(BillingService.instance.init());
+  await BillingService.instance.init();
 }
 
 class MyApp extends StatefulWidget {
@@ -97,15 +104,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'LeafSnap AI',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        fontFamily: 'Inter',
+    return PostHogWidget(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Chlora',
+        theme: ThemeData(
+          primarySwatch: Colors.green,
+          fontFamily: 'Inter',
+        ),
+        navigatorObservers: [routeObserver],
+        home: StartupGate(initialization: widget.initialization),
       ),
-      navigatorObservers: [routeObserver],
-      home: StartupGate(initialization: widget.initialization),
     );
   }
 }
@@ -203,7 +212,7 @@ class _StartupGateState extends State<StartupGate> {
                   const AnimatedLogoWidget(size: 110, repeat: true),
                   const SizedBox(height: 24),
                   Text(
-                    'LeafSnap AI could not finish loading.',
+                    'Chlora could not finish loading.',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: const Color(0xFF17382C),
                           fontWeight: FontWeight.w800,
