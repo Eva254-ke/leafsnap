@@ -3,5 +3,5 @@ __pycache__/
 .env
 .env.*
 !.env.example
-*.json
 service-account*.json
+*.log
