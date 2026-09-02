@@ -1,7 +1,4 @@
-__pycache__/
-*.pyc
-.env
-.env.*
-!.env.example
-service-account*.json
+node_modules/
+.wrangler/
 *.log
+.env
